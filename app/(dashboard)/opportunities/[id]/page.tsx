@@ -16,9 +16,9 @@ import { StatusBadge } from '@/components/status-badge'
 import { WorkModeBadge } from '@/components/work-mode-badge'
 import { PageContainer } from '@/components/layout/page-container'
 import { useOpportunities } from '@/lib/contexts/opportunities-context'
-import { getActivitiesByOpportunityId } from '@/lib/mock-data'
 import { STATUS_CONFIG } from '@/lib/constants'
-import type { OpportunityStatus } from '@/lib/types'
+import type { ActivityType, OpportunityStatus } from '@/lib/types'
+import type { LucideIcon } from 'lucide-react'
 import { formatDate, formatDateTime } from '@/lib/date-utils'
 import {
   ArrowLeft,
@@ -40,7 +40,7 @@ interface OpportunityDetailPageProps {
   params: Promise<{ id: string }>
 }
 
-const ACTIVITY_ICONS = {
+const ACTIVITY_ICONS: Record<ActivityType, LucideIcon> = {
   created: CircleDot,
   status_changed: ArrowRightCircle,
   pipeline_added: Kanban,
@@ -52,8 +52,8 @@ export default function OpportunityDetailPage({
   params,
 }: OpportunityDetailPageProps) {
   const { id } = use(params)
-  const { getOpportunityById, updateOpportunityStatus } = useOpportunities()
-  
+  const { getOpportunityById, getActivitiesByOpportunityId, updateOpportunityStatus } = useOpportunities()
+
   const opportunity = getOpportunityById(id)
   const activities = getActivitiesByOpportunityId(id)
 
@@ -62,7 +62,7 @@ export default function OpportunityDetailPage({
   }
 
   const handleStatusChange = (newStatus: OpportunityStatus) => {
-    updateOpportunityStatus(id, newStatus)
+    void updateOpportunityStatus(id, newStatus)
   }
 
   return (
