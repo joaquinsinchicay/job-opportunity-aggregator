@@ -7,9 +7,14 @@ import { PageContainer } from '@/components/layout/page-container'
 import { PipelineBoard } from '@/components/pipeline/pipeline-board'
 import { useOpportunities } from '@/lib/contexts/opportunities-context'
 import { Plus } from 'lucide-react'
+import type { OpportunityStatus } from '@/lib/types'
 
 export default function PipelinePage() {
   const { opportunities, updateOpportunityStatus } = useOpportunities()
+
+  const handleStatusChange = (id: string, status: OpportunityStatus) => {
+    void updateOpportunityStatus(id, status)
+  }
 
   return (
     <PageContainer fullWidth className="flex flex-col h-screen">
@@ -32,7 +37,7 @@ export default function PipelinePage() {
         <div className="h-full overflow-x-auto">
           <PipelineBoard 
             opportunities={opportunities}
-            onStatusChange={updateOpportunityStatus}
+            onStatusChange={handleStatusChange}
           />
         </div>
       </div>
