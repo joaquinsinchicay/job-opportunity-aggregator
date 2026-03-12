@@ -1,7 +1,13 @@
 'use client'
 
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
-import type { ActivityItem, Opportunity, OpportunityStatus, CreateOpportunityInput } from '../types'
+import type {
+  ActivityItem,
+  Opportunity,
+  OpportunityStatus,
+  CreateOpportunityInput,
+  UpdateOpportunityInput,
+} from '../types'
 import { getOpportunitiesRepository } from '@/lib/repositories'
 
 interface OpportunitiesContextValue {
@@ -12,6 +18,7 @@ interface OpportunitiesContextValue {
 
   updateOpportunityStatus: (id: string, status: OpportunityStatus) => Promise<void>
   addOpportunity: (input: CreateOpportunityInput) => Promise<void>
+  updateOpportunity: (id: string, input: UpdateOpportunityInput) => Promise<Opportunity | null>
   deleteOpportunity: (id: string) => Promise<void>
   refreshOpportunities: () => Promise<void>
 }
@@ -78,6 +85,35 @@ export function OpportunitiesProvider({ children, initialData }: OpportunitiesPr
     [repository]
   )
 
+
+  const updateOpportunity = useCallback(
+    async (id: string, input: UpdateOpportunityInput): Promise<Opportunity | null> => {
+      setError(null)
+      const updated = await repository.updateOpportunity(id, input)
+      if (!updated) return null
+
+      setOpportunities((prev) => prev.map((opp) => (opp.id === id ? updated : opp)))
+
+      if (input.followUpDate !== undefined) {
+        if (input.followUpDate) {
+          setActivities((prev) => [
+            {
+              id: `activity_${Date.now()}`,
+              opportunityId: id,
+              type: 'followup_set',
+              description: 'Follow-up date updated',
+              timestamp: new Date().toISOString(),
+            },
+            ...prev,
+          ])
+        }
+      }
+
+      return updated
+    },
+    [repository]
+  )
+
   const deleteOpportunity = useCallback(
     async (id: string) => {
       setError(null)
@@ -95,6 +131,7 @@ export function OpportunitiesProvider({ children, initialData }: OpportunitiesPr
     error,
     updateOpportunityStatus,
     addOpportunity,
+    updateOpportunity,
     deleteOpportunity,
     refreshOpportunities,
   }
