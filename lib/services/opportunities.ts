@@ -5,7 +5,7 @@
  * and pure list operations to selector helpers.
  */
 
-import { opportunitiesRepository } from '@/lib/repositories'
+import { getOpportunitiesRepository } from '@/lib/repositories'
 import {
   filterOpportunities,
   getOpportunityStats,
@@ -22,68 +22,74 @@ import type {
   UpdateOpportunityInput,
 } from '../types'
 
+function repository() {
+  return getOpportunitiesRepository()
+}
+
 export async function getOpportunities(): Promise<Opportunity[]> {
-  return opportunitiesRepository.listOpportunities()
+  return repository().listOpportunities()
 }
 
 export async function getOpportunityById(id: string): Promise<Opportunity | null> {
-  return opportunitiesRepository.getOpportunityById(id)
+  return repository().getOpportunityById(id)
 }
 
 export async function getOpportunitiesByStatus(status: OpportunityStatus): Promise<Opportunity[]> {
-  const opportunities = await opportunitiesRepository.listOpportunities()
+  const opportunities = await repository().listOpportunities()
   return opportunities.filter((opp) => opp.status === status)
 }
 
 export async function getUpcomingFollowUps(): Promise<Opportunity[]> {
-  const opportunities = await opportunitiesRepository.listOpportunities()
+  const opportunities = await repository().listOpportunities()
   return selectUpcomingFollowUps(opportunities)
 }
 
 export async function getRecentOpportunities(limit = 5): Promise<Opportunity[]> {
-  const opportunities = await opportunitiesRepository.listOpportunities()
+  const opportunities = await repository().listOpportunities()
   return selectRecentOpportunities(opportunities, limit)
 }
 
 export async function getActivitiesByOpportunityId(opportunityId: string): Promise<ActivityItem[]> {
-  return opportunitiesRepository.listActivitiesByOpportunityId(opportunityId)
+  return repository().listActivitiesByOpportunityId(opportunityId)
 }
 
 export async function createOpportunity(input: CreateOpportunityInput): Promise<Opportunity> {
-  return opportunitiesRepository.createOpportunity(input)
+  const result = await repository().createOpportunity(input)
+  return result.opportunity
 }
 
 export async function updateOpportunity(
   id: string,
   input: UpdateOpportunityInput
 ): Promise<Opportunity | null> {
-  return opportunitiesRepository.updateOpportunity(id, input)
+  return repository().updateOpportunity(id, input)
 }
 
 export async function updateOpportunityStatus(
   id: string,
   status: OpportunityStatus
 ): Promise<Opportunity | null> {
-  return opportunitiesRepository.updateOpportunityStatus(id, status)
+  const result = await repository().updateOpportunityStatus(id, status)
+  return result.opportunity
 }
 
 export async function deleteOpportunity(id: string): Promise<boolean> {
-  return opportunitiesRepository.deleteOpportunity(id)
+  return repository().deleteOpportunity(id)
 }
 
 export interface FilterOptions extends OpportunityFilterOptions {}
 
 export async function searchOpportunities(query: string): Promise<Opportunity[]> {
-  const opportunities = await opportunitiesRepository.listOpportunities()
+  const opportunities = await repository().listOpportunities()
   return filterOpportunities(opportunities, { search: query })
 }
 
 export async function filterOpportunitiesByOptions(options: FilterOptions): Promise<Opportunity[]> {
-  const opportunities = await opportunitiesRepository.listOpportunities()
+  const opportunities = await repository().listOpportunities()
   return filterOpportunities(opportunities, options)
 }
 
 export async function getOpportunityStatsSummary(): Promise<OpportunityStats> {
-  const opportunities = await opportunitiesRepository.listOpportunities()
+  const opportunities = await repository().listOpportunities()
   return getOpportunityStats(opportunities)
 }

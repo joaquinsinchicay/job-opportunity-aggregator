@@ -88,10 +88,6 @@ export default function NewOpportunityPage() {
 
     setIsSubmitting(true)
 
-    // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 300))
-
-    // Add opportunity using context
     await addOpportunity({
       title: formData.title,
       company: formData.company,

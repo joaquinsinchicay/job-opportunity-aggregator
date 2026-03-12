@@ -1,6 +1,6 @@
 'use client'
 
-import { use } from 'react'
+import { use, useMemo } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -20,6 +20,7 @@ import { STATUS_CONFIG } from '@/lib/constants'
 import type { ActivityType, OpportunityStatus } from '@/lib/types'
 import type { LucideIcon } from 'lucide-react'
 import { formatDate, formatDateTime } from '@/lib/date-utils'
+import { getActivitiesByOpportunityId, getOpportunityById } from '@/lib/selectors/opportunities'
 import {
   ArrowLeft,
   Building2,
@@ -52,10 +53,10 @@ export default function OpportunityDetailPage({
   params,
 }: OpportunityDetailPageProps) {
   const { id } = use(params)
-  const { getOpportunityById, getActivitiesByOpportunityId, updateOpportunityStatus } = useOpportunities()
+  const { opportunities, activities, updateOpportunityStatus } = useOpportunities()
 
-  const opportunity = getOpportunityById(id)
-  const activities = getActivitiesByOpportunityId(id)
+  const opportunity = useMemo(() => getOpportunityById(opportunities, id), [opportunities, id])
+  const opportunityActivities = useMemo(() => getActivitiesByOpportunityId(activities, id), [activities, id])
 
   if (!opportunity) {
     notFound()
@@ -186,11 +187,11 @@ export default function OpportunityDetailPage({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {activities.length > 0 ? (
+              {opportunityActivities.length > 0 ? (
                 <div className="relative">
                   <div className="absolute left-4 top-0 bottom-0 w-px bg-border" />
                   <ul className="space-y-4">
-                    {activities.map((activity) => {
+                    {opportunityActivities.map((activity) => {
                       const Icon = ACTIVITY_ICONS[activity.type] || CircleDot
                       return (
                         <li key={activity.id} className="relative pl-10">

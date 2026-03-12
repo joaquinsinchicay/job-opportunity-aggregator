@@ -1,19 +1,8 @@
 'use client'
 
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
-import type {
-  ActivityItem,
-  Opportunity,
-  OpportunityStatus,
-  CreateOpportunityInput,
-  OpportunityStats,
-} from '../types'
-import { opportunitiesRepository } from '@/lib/repositories'
-import {
-  getOpportunityStats,
-  getRecentOpportunities,
-  getUpcomingFollowUps,
-} from '@/lib/selectors/opportunities'
+import type { ActivityItem, Opportunity, OpportunityStatus, CreateOpportunityInput } from '../types'
+import { getOpportunitiesRepository } from '@/lib/repositories'
 
 interface OpportunitiesContextValue {
   opportunities: Opportunity[]
@@ -21,19 +10,10 @@ interface OpportunitiesContextValue {
   isLoading: boolean
   error: Error | null
 
-  // Actions
   updateOpportunityStatus: (id: string, status: OpportunityStatus) => Promise<void>
-  addOpportunity: (input: CreateOpportunityInput) => Promise<Opportunity>
+  addOpportunity: (input: CreateOpportunityInput) => Promise<void>
   deleteOpportunity: (id: string) => Promise<void>
   refreshOpportunities: () => Promise<void>
-
-  // Computed values
-  getOpportunityById: (id: string) => Opportunity | undefined
-  getOpportunitiesByStatus: (status: OpportunityStatus) => Opportunity[]
-  getActivitiesByOpportunityId: (opportunityId: string) => ActivityItem[]
-  getUpcomingFollowUps: () => Opportunity[]
-  getRecentOpportunities: (limit?: number) => Opportunity[]
-  getStats: () => OpportunityStats
 }
 
 const OpportunitiesContext = createContext<OpportunitiesContextValue | undefined>(undefined)
@@ -44,6 +24,7 @@ interface OpportunitiesProviderProps {
 }
 
 export function OpportunitiesProvider({ children, initialData }: OpportunitiesProviderProps) {
+  const repository = getOpportunitiesRepository()
   const [opportunities, setOpportunities] = useState<Opportunity[]>(initialData ?? [])
   const [activities, setActivities] = useState<ActivityItem[]>([])
   const [isLoading, setIsLoading] = useState(!initialData)
@@ -52,10 +33,11 @@ export function OpportunitiesProvider({ children, initialData }: OpportunitiesPr
   const refreshOpportunities = useCallback(async () => {
     setIsLoading(true)
     setError(null)
+
     try {
       const [nextOpportunities, nextActivities] = await Promise.all([
-        opportunitiesRepository.listOpportunities(),
-        opportunitiesRepository.listActivities(),
+        repository.listOpportunities(),
+        repository.listActivities(),
       ])
       setOpportunities(nextOpportunities)
       setActivities(nextActivities)
@@ -64,7 +46,7 @@ export function OpportunitiesProvider({ children, initialData }: OpportunitiesPr
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [repository])
 
   useEffect(() => {
     if (!initialData) {
@@ -72,61 +54,39 @@ export function OpportunitiesProvider({ children, initialData }: OpportunitiesPr
     }
   }, [initialData, refreshOpportunities])
 
-  const updateOpportunityStatus = useCallback(async (id: string, status: OpportunityStatus) => {
-    setError(null)
-    const updated = await opportunitiesRepository.updateOpportunityStatus(id, status)
-    if (!updated) return
+  const updateOpportunityStatus = useCallback(
+    async (id: string, status: OpportunityStatus) => {
+      setError(null)
+      const result = await repository.updateOpportunityStatus(id, status)
+      if (!result.opportunity) return
 
-    setOpportunities((prev) => prev.map((opp) => (opp.id === id ? updated : opp)))
-    const nextActivities = await opportunitiesRepository.listActivitiesByOpportunityId(id)
-    setActivities((prev) => {
-      const withoutCurrent = prev.filter((activity) => activity.opportunityId !== id)
-      return [...nextActivities, ...withoutCurrent]
-    })
-  }, [])
+      setOpportunities((prev) => prev.map((opp) => (opp.id === id ? result.opportunity! : opp)))
+      if (!result.activity) return
 
-  const addOpportunity = useCallback(async (input: CreateOpportunityInput): Promise<Opportunity> => {
-    setError(null)
-    const created = await opportunitiesRepository.createOpportunity(input)
-    setOpportunities((prev) => [created, ...prev])
-    const nextActivities = await opportunitiesRepository.listActivitiesByOpportunityId(created.id)
-    setActivities((prev) => [...nextActivities, ...prev])
-    return created
-  }, [])
-
-  const deleteOpportunity = useCallback(async (id: string) => {
-    setError(null)
-    await opportunitiesRepository.deleteOpportunity(id)
-    setOpportunities((prev) => prev.filter((opp) => opp.id !== id))
-    setActivities((prev) => prev.filter((activity) => activity.opportunityId !== id))
-  }, [])
-
-  const getOpportunityById = useCallback(
-    (id: string) => opportunities.find((opp) => opp.id === id),
-    [opportunities]
+      setActivities((prev) => [result.activity!, ...prev])
+    },
+    [repository]
   )
 
-  const getOpportunitiesByStatus = useCallback(
-    (status: OpportunityStatus) => opportunities.filter((opp) => opp.status === status),
-    [opportunities]
+  const addOpportunity = useCallback(
+    async (input: CreateOpportunityInput) => {
+      setError(null)
+      const result = await repository.createOpportunity(input)
+      setOpportunities((prev) => [result.opportunity, ...prev])
+      setActivities((prev) => [result.activity, ...prev])
+    },
+    [repository]
   )
 
-  const getActivitiesByOpportunityId = useCallback(
-    (opportunityId: string) =>
-      activities
-        .filter((activity) => activity.opportunityId === opportunityId)
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()),
-    [activities]
+  const deleteOpportunity = useCallback(
+    async (id: string) => {
+      setError(null)
+      await repository.deleteOpportunity(id)
+      setOpportunities((prev) => prev.filter((opp) => opp.id !== id))
+      setActivities((prev) => prev.filter((activity) => activity.opportunityId !== id))
+    },
+    [repository]
   )
-
-  const getUpcomingFollowUpsMemo = useCallback(() => getUpcomingFollowUps(opportunities), [opportunities])
-
-  const getRecentOpportunitiesMemo = useCallback(
-    (limit = 5) => getRecentOpportunities(opportunities, limit),
-    [opportunities]
-  )
-
-  const getStatsMemo = useCallback(() => getOpportunityStats(opportunities), [opportunities])
 
   const value: OpportunitiesContextValue = {
     opportunities,
@@ -137,12 +97,6 @@ export function OpportunitiesProvider({ children, initialData }: OpportunitiesPr
     addOpportunity,
     deleteOpportunity,
     refreshOpportunities,
-    getOpportunityById,
-    getOpportunitiesByStatus,
-    getActivitiesByOpportunityId,
-    getUpcomingFollowUps: getUpcomingFollowUpsMemo,
-    getRecentOpportunities: getRecentOpportunitiesMemo,
-    getStats: getStatsMemo,
   }
 
   return <OpportunitiesContext.Provider value={value}>{children}</OpportunitiesContext.Provider>

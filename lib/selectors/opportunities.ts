@@ -1,4 +1,5 @@
 import type {
+  ActivityItem,
   Opportunity,
   OpportunityStats,
   OpportunityStatus,
@@ -10,6 +11,26 @@ export interface OpportunityFilterOptions {
   location?: string
   workMode?: WorkMode | 'all'
   status?: OpportunityStatus | 'all'
+}
+
+export function getOpportunityById(opportunities: Opportunity[], id: string): Opportunity | undefined {
+  return opportunities.find((opp) => opp.id === id)
+}
+
+export function getActivitiesByOpportunityId(
+  activities: ActivityItem[],
+  opportunityId: string
+): ActivityItem[] {
+  return activities
+    .filter((activity) => activity.opportunityId === opportunityId)
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+}
+
+export function getOpportunitiesByStatus(
+  opportunities: Opportunity[],
+  status: OpportunityStatus
+): Opportunity[] {
+  return opportunities.filter((opp) => opp.status === status)
 }
 
 export function filterOpportunities(

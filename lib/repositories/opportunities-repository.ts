@@ -8,22 +8,26 @@ import type {
   UpdateOpportunityInput,
 } from '@/lib/types'
 
-const SIMULATED_DELAY = 100
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
 function clone<T>(value: T): T {
   return structuredClone(value)
+}
+
+export interface CreateOpportunityResult {
+  opportunity: Opportunity
+  activity: ActivityItem
+}
+
+export interface UpdateStatusResult {
+  opportunity: Opportunity | null
+  activity?: ActivityItem
 }
 
 export interface OpportunitiesRepository {
   listOpportunities(): Promise<Opportunity[]>
   getOpportunityById(id: string): Promise<Opportunity | null>
-  createOpportunity(input: CreateOpportunityInput): Promise<Opportunity>
+  createOpportunity(input: CreateOpportunityInput): Promise<CreateOpportunityResult>
   updateOpportunity(id: string, input: UpdateOpportunityInput): Promise<Opportunity | null>
-  updateOpportunityStatus(id: string, status: OpportunityStatus): Promise<Opportunity | null>
+  updateOpportunityStatus(id: string, status: OpportunityStatus): Promise<UpdateStatusResult>
   deleteOpportunity(id: string): Promise<boolean>
   listActivitiesByOpportunityId(opportunityId: string): Promise<ActivityItem[]>
   listActivities(): Promise<ActivityItem[]>
@@ -39,19 +43,16 @@ export class InMemoryOpportunitiesRepository implements OpportunitiesRepository 
   }
 
   async listOpportunities(): Promise<Opportunity[]> {
-    await delay(SIMULATED_DELAY)
     return clone(this.opportunities)
   }
 
   async getOpportunityById(id: string): Promise<Opportunity | null> {
-    await delay(SIMULATED_DELAY)
     return clone(this.opportunities.find((opp) => opp.id === id) ?? null)
   }
 
-  async createOpportunity(input: CreateOpportunityInput): Promise<Opportunity> {
-    await delay(SIMULATED_DELAY)
+  async createOpportunity(input: CreateOpportunityInput): Promise<CreateOpportunityResult> {
     const now = new Date().toISOString()
-    const created: Opportunity = {
+    const opportunity: Opportunity = {
       id: `opp_${Date.now()}`,
       title: input.title,
       company: input.company,
@@ -63,23 +64,21 @@ export class InMemoryOpportunitiesRepository implements OpportunitiesRepository 
       createdAt: now,
     }
 
-    this.opportunities = [created, ...this.opportunities]
-    this.activities = [
-      {
-        id: `activity_${Date.now()}`,
-        opportunityId: created.id,
-        type: 'created',
-        description: 'Opportunity created',
-        timestamp: now,
-      },
-      ...this.activities,
-    ]
+    const activity: ActivityItem = {
+      id: `activity_${Date.now()}`,
+      opportunityId: opportunity.id,
+      type: 'created',
+      description: 'Opportunity created',
+      timestamp: now,
+    }
 
-    return clone(created)
+    this.opportunities = [opportunity, ...this.opportunities]
+    this.activities = [activity, ...this.activities]
+
+    return clone({ opportunity, activity })
   }
 
   async updateOpportunity(id: string, input: UpdateOpportunityInput): Promise<Opportunity | null> {
-    await delay(SIMULATED_DELAY)
     const index = this.opportunities.findIndex((opp) => opp.id === id)
     if (index === -1) return null
 
@@ -88,46 +87,44 @@ export class InMemoryOpportunitiesRepository implements OpportunitiesRepository 
     return clone(updated)
   }
 
-  async updateOpportunityStatus(id: string, status: OpportunityStatus): Promise<Opportunity | null> {
-    await delay(SIMULATED_DELAY)
+  async updateOpportunityStatus(id: string, status: OpportunityStatus): Promise<UpdateStatusResult> {
     const index = this.opportunities.findIndex((opp) => opp.id === id)
-    if (index === -1) return null
+    if (index === -1) return { opportunity: null }
 
     const current = this.opportunities[index]
     const nextAppliedDate =
       status === 'applied' && !current.appliedDate ? new Date().toISOString() : current.appliedDate
 
-    const updated: Opportunity = {
+    const opportunity: Opportunity = {
       ...current,
       status,
       appliedDate: nextAppliedDate,
     }
 
-    this.opportunities[index] = updated
+    this.opportunities[index] = opportunity
 
-    if (current.status !== status) {
-      const timestamp = new Date().toISOString()
-      this.activities = [
-        {
-          id: `activity_${Date.now()}`,
-          opportunityId: id,
-          type: 'status_changed',
-          description: `Status changed from ${current.status} to ${status}`,
-          timestamp,
-          metadata: {
-            fromStatus: current.status,
-            toStatus: status,
-          },
-        },
-        ...this.activities,
-      ]
+    if (current.status === status) {
+      return clone({ opportunity })
     }
 
-    return clone(updated)
+    const activity: ActivityItem = {
+      id: `activity_${Date.now()}`,
+      opportunityId: id,
+      type: 'status_changed',
+      description: `Status changed from ${current.status} to ${status}`,
+      timestamp: new Date().toISOString(),
+      metadata: {
+        fromStatus: current.status,
+        toStatus: status,
+      },
+    }
+
+    this.activities = [activity, ...this.activities]
+
+    return clone({ opportunity, activity })
   }
 
   async deleteOpportunity(id: string): Promise<boolean> {
-    await delay(SIMULATED_DELAY)
     const before = this.opportunities.length
     this.opportunities = this.opportunities.filter((opp) => opp.id !== id)
     this.activities = this.activities.filter((item) => item.opportunityId !== id)
@@ -135,7 +132,6 @@ export class InMemoryOpportunitiesRepository implements OpportunitiesRepository 
   }
 
   async listActivitiesByOpportunityId(opportunityId: string): Promise<ActivityItem[]> {
-    await delay(SIMULATED_DELAY)
     return clone(
       this.activities
         .filter((item) => item.opportunityId === opportunityId)
@@ -144,7 +140,6 @@ export class InMemoryOpportunitiesRepository implements OpportunitiesRepository 
   }
 
   async listActivities(): Promise<ActivityItem[]> {
-    await delay(SIMULATED_DELAY)
     return clone(this.activities)
   }
 }
