@@ -1,6 +1,6 @@
 'use client'
 
-import { use } from 'react'
+import { use, useMemo } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -16,10 +16,11 @@ import { StatusBadge } from '@/components/status-badge'
 import { WorkModeBadge } from '@/components/work-mode-badge'
 import { PageContainer } from '@/components/layout/page-container'
 import { useOpportunities } from '@/lib/contexts/opportunities-context'
-import { getActivitiesByOpportunityId } from '@/lib/mock-data'
 import { STATUS_CONFIG } from '@/lib/constants'
-import type { OpportunityStatus } from '@/lib/types'
+import type { ActivityType, OpportunityStatus } from '@/lib/types'
+import type { LucideIcon } from 'lucide-react'
 import { formatDate, formatDateTime } from '@/lib/date-utils'
+import { getActivitiesByOpportunityId, getOpportunityById } from '@/lib/selectors/opportunities'
 import {
   ArrowLeft,
   Building2,
@@ -40,7 +41,7 @@ interface OpportunityDetailPageProps {
   params: Promise<{ id: string }>
 }
 
-const ACTIVITY_ICONS = {
+const ACTIVITY_ICONS: Record<ActivityType, LucideIcon> = {
   created: CircleDot,
   status_changed: ArrowRightCircle,
   pipeline_added: Kanban,
@@ -52,17 +53,18 @@ export default function OpportunityDetailPage({
   params,
 }: OpportunityDetailPageProps) {
   const { id } = use(params)
-  const { getOpportunityById, updateOpportunityStatus } = useOpportunities()
-  
-  const opportunity = getOpportunityById(id)
-  const activities = getActivitiesByOpportunityId(id)
+  const { opportunities, activities, updateOpportunityStatus } = useOpportunities()
+
+  const opportunity = useMemo(() => getOpportunityById(opportunities, id), [opportunities, id])
+  const opportunityActivities = useMemo(() => getActivitiesByOpportunityId(activities, id), [activities, id])
 
   if (!opportunity) {
     notFound()
   }
 
-  const handleStatusChange = (newStatus: OpportunityStatus) => {
-    updateOpportunityStatus(id, newStatus)
+  const handleStatusChange = async (newStatus: OpportunityStatus) => {
+    if (newStatus === opportunity.status) return
+    await updateOpportunityStatus(id, newStatus)
   }
 
   return (
@@ -186,11 +188,11 @@ export default function OpportunityDetailPage({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {activities.length > 0 ? (
+              {opportunityActivities.length > 0 ? (
                 <div className="relative">
                   <div className="absolute left-4 top-0 bottom-0 w-px bg-border" />
                   <ul className="space-y-4">
-                    {activities.map((activity) => {
+                    {opportunityActivities.map((activity) => {
                       const Icon = ACTIVITY_ICONS[activity.type] || CircleDot
                       return (
                         <li key={activity.id} className="relative pl-10">
@@ -226,9 +228,11 @@ export default function OpportunityDetailPage({
               <CardTitle className="text-lg">Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Button className="w-full" variant="outline">
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit Opportunity
+              <Button className="w-full" variant="outline" asChild>
+                <Link href={`/opportunities/${opportunity.id}/edit`}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit Opportunity
+                </Link>
               </Button>
               <Button className="w-full" variant="outline" asChild>
                 <Link href="/pipeline">
