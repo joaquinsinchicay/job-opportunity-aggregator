@@ -26,6 +26,7 @@ export function PipelineCard({ opportunity, onDragStart }: PipelineCardProps) {
             <Link
               href={`/opportunities/${opportunity.id}`}
               className="block hover:underline"
+              draggable={false}
             >
               <h4 className="font-medium text-sm text-foreground truncate">
                 {opportunity.title}

@@ -62,8 +62,9 @@ export default function OpportunityDetailPage({
     notFound()
   }
 
-  const handleStatusChange = (newStatus: OpportunityStatus) => {
-    void updateOpportunityStatus(id, newStatus)
+  const handleStatusChange = async (newStatus: OpportunityStatus) => {
+    if (newStatus === opportunity.status) return
+    await updateOpportunityStatus(id, newStatus)
   }
 
   return (
@@ -227,9 +228,11 @@ export default function OpportunityDetailPage({
               <CardTitle className="text-lg">Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Button className="w-full" variant="outline">
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit Opportunity
+              <Button className="w-full" variant="outline" asChild>
+                <Link href={`/opportunities/${opportunity.id}/edit`}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit Opportunity
+                </Link>
               </Button>
               <Button className="w-full" variant="outline" asChild>
                 <Link href="/pipeline">
