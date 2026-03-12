@@ -12,28 +12,22 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { PageHeader } from '@/components/page-header'
+import { PageContainer } from '@/components/layout/page-container'
 import { OpportunityCard } from '@/components/opportunity-card'
 import { EmptyState } from '@/components/empty-state'
-import { mockOpportunities } from '@/lib/mock-data'
-import { WORK_MODE_LABELS, type WorkMode } from '@/lib/types'
+import { useOpportunities } from '@/lib/contexts/opportunities-context'
+import { WORK_MODE_CONFIG, LOCATION_OPTIONS } from '@/lib/constants'
+import type { WorkMode } from '@/lib/types'
 import { Plus, Search, Briefcase } from 'lucide-react'
 
-const LOCATIONS = [
-  'All Locations',
-  'San Francisco, CA',
-  'New York, NY',
-  'Toronto, Canada',
-  'Oakland, CA',
-  'Remote',
-]
-
 export default function OpportunitiesPage() {
+  const { opportunities } = useOpportunities()
   const [searchQuery, setSearchQuery] = useState('')
   const [locationFilter, setLocationFilter] = useState('All Locations')
   const [workModeFilter, setWorkModeFilter] = useState<WorkMode | 'all'>('all')
 
   const filteredOpportunities = useMemo(() => {
-    return mockOpportunities.filter((opp) => {
+    return opportunities.filter((opp) => {
       // Search filter
       const searchLower = searchQuery.toLowerCase()
       const matchesSearch =
@@ -52,18 +46,24 @@ export default function OpportunitiesPage() {
 
       return matchesSearch && matchesLocation && matchesWorkMode
     })
-  }, [searchQuery, locationFilter, workModeFilter])
+  }, [opportunities, searchQuery, locationFilter, workModeFilter])
 
   const hasFilters =
     searchQuery !== '' ||
     locationFilter !== 'All Locations' ||
     workModeFilter !== 'all'
 
+  const clearFilters = () => {
+    setSearchQuery('')
+    setLocationFilter('All Locations')
+    setWorkModeFilter('all')
+  }
+
   return (
-    <div className="p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
+    <PageContainer>
       <PageHeader
         title="Opportunities"
-        description={`${mockOpportunities.length} total opportunities`}
+        description={`${opportunities.length} total opportunities`}
         actions={
           <Button asChild>
             <Link href="/opportunities/new">
@@ -94,7 +94,7 @@ export default function OpportunitiesPage() {
               <SelectValue placeholder="Location" />
             </SelectTrigger>
             <SelectContent>
-              {LOCATIONS.map((location) => (
+              {LOCATION_OPTIONS.map((location) => (
                 <SelectItem key={location} value={location}>
                   {location}
                 </SelectItem>
@@ -110,8 +110,8 @@ export default function OpportunitiesPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Modes</SelectItem>
-              {(Object.entries(WORK_MODE_LABELS) as [WorkMode, string][]).map(
-                ([value, label]) => (
+              {(Object.entries(WORK_MODE_CONFIG) as [WorkMode, { label: string }][]).map(
+                ([value, { label }]) => (
                   <SelectItem key={value} value={value}>
                     {label}
                   </SelectItem>
@@ -136,14 +136,7 @@ export default function OpportunitiesPage() {
             title="No results found"
             description="Try adjusting your search or filters to find what you're looking for."
             action={
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSearchQuery('')
-                  setLocationFilter('All Locations')
-                  setWorkModeFilter('all')
-                }}
-              >
+              <Button variant="outline" onClick={clearFilters}>
                 Clear filters
               </Button>
             }
@@ -164,6 +157,6 @@ export default function OpportunitiesPage() {
           />
         )}
       </div>
-    </div>
+    </PageContainer>
   )
 }

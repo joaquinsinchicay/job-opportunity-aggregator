@@ -15,17 +15,11 @@ import {
 } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PageHeader } from '@/components/page-header'
-import { WORK_MODE_LABELS, type WorkMode } from '@/lib/types'
+import { PageContainer } from '@/components/layout/page-container'
+import { useOpportunities } from '@/lib/contexts/opportunities-context'
+import { WORK_MODE_CONFIG } from '@/lib/constants'
+import type { WorkMode, CreateOpportunityInput } from '@/lib/types'
 import { ArrowLeft, Link as LinkIcon, Building2, MapPin, Briefcase, FileText } from 'lucide-react'
-
-interface FormData {
-  sourceUrl: string
-  title: string
-  company: string
-  location: string
-  workMode: WorkMode | ''
-  notes: string
-}
 
 interface FormErrors {
   sourceUrl?: string
@@ -37,8 +31,9 @@ interface FormErrors {
 
 export default function NewOpportunityPage() {
   const router = useRouter()
+  const { addOpportunity } = useOpportunities()
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState<CreateOpportunityInput & { workMode: WorkMode | '' }>({
     sourceUrl: '',
     title: '',
     company: '',
@@ -84,20 +79,28 @@ export default function NewOpportunityPage() {
     e.preventDefault()
 
     if (!validateForm()) return
+    if (!formData.workMode) return
 
     setIsSubmitting(true)
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    // Simulate API call delay
+    await new Promise((resolve) => setTimeout(resolve, 300))
 
-    // In a real app, this would save to a database
-    console.log('[v0] Form submitted:', formData)
+    // Add opportunity using context
+    addOpportunity({
+      title: formData.title,
+      company: formData.company,
+      location: formData.location,
+      workMode: formData.workMode,
+      sourceUrl: formData.sourceUrl,
+      notes: formData.notes,
+    })
 
     setIsSubmitting(false)
     router.push('/opportunities')
   }
 
-  const updateField = (field: keyof FormData, value: string) => {
+  const updateField = <K extends keyof typeof formData>(field: K, value: typeof formData[K]) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
     if (errors[field as keyof FormErrors]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }))
@@ -105,7 +108,7 @@ export default function NewOpportunityPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
+    <PageContainer>
       <Button
         variant="ghost"
         size="sm"
@@ -229,7 +232,7 @@ export default function NewOpportunityPage() {
               </label>
               <Select
                 value={formData.workMode}
-                onValueChange={(value) => updateField('workMode', value)}
+                onValueChange={(value) => updateField('workMode', value as WorkMode)}
               >
                 <SelectTrigger
                   id="workMode"
@@ -238,8 +241,8 @@ export default function NewOpportunityPage() {
                   <SelectValue placeholder="Select work mode" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(Object.entries(WORK_MODE_LABELS) as [WorkMode, string][]).map(
-                    ([value, label]) => (
+                  {(Object.entries(WORK_MODE_CONFIG) as [WorkMode, { label: string }][]).map(
+                    ([value, { label }]) => (
                       <SelectItem key={value} value={value}>
                         {label}
                       </SelectItem>
@@ -283,6 +286,6 @@ export default function NewOpportunityPage() {
           </form>
         </CardContent>
       </Card>
-    </div>
+    </PageContainer>
   )
 }

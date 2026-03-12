@@ -1,23 +1,16 @@
 'use client'
 
 import { useState } from 'react'
-import { PipelineColumn } from '@/components/pipeline-column'
+import { PipelineColumn } from './pipeline-column'
+import { PIPELINE_STATUSES } from '@/lib/constants'
 import type { Opportunity, OpportunityStatus } from '@/lib/types'
-
-const PIPELINE_STATUSES: OpportunityStatus[] = [
-  'saved',
-  'applied',
-  'interview',
-  'offer',
-  'rejected',
-]
 
 interface PipelineBoardProps {
   opportunities: Opportunity[]
+  onStatusChange: (id: string, status: OpportunityStatus) => void
 }
 
-export function PipelineBoard({ opportunities: initialOpportunities }: PipelineBoardProps) {
-  const [opportunities, setOpportunities] = useState(initialOpportunities)
+export function PipelineBoard({ opportunities, onStatusChange }: PipelineBoardProps) {
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const [dragOverStatus, setDragOverStatus] = useState<OpportunityStatus | null>(null)
 
@@ -37,11 +30,7 @@ export function PipelineBoard({ opportunities: initialOpportunities }: PipelineB
     const opportunityId = e.dataTransfer.getData('text/plain')
 
     if (opportunityId) {
-      setOpportunities((prev) =>
-        prev.map((opp) =>
-          opp.id === opportunityId ? { ...opp, status: newStatus } : opp
-        )
-      )
+      onStatusChange(opportunityId, newStatus)
     }
 
     setDraggedId(null)
@@ -63,7 +52,7 @@ export function PipelineBoard({ opportunities: initialOpportunities }: PipelineB
 
   return (
     <div 
-      className="flex gap-4 overflow-x-auto pb-4"
+      className="flex gap-4 h-full min-w-max pb-4"
       onDragEnd={handleDragEnd}
     >
       {PIPELINE_STATUSES.map((status) => (
@@ -78,6 +67,7 @@ export function PipelineBoard({ opportunities: initialOpportunities }: PipelineB
             onDragOver={handleDragOver}
             onDrop={handleDrop}
             dragOverStatus={dragOverStatus}
+            isDragging={draggedId !== null}
           />
         </div>
       ))}

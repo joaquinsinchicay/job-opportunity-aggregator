@@ -1,3 +1,13 @@
+/**
+ * Mock Data
+ * 
+ * This file contains mock data for development and testing.
+ * In production, this data would come from a database (e.g., Supabase).
+ * 
+ * The mock data is designed to showcase various states and scenarios
+ * that users might encounter while using the application.
+ */
+
 import type { Opportunity, ActivityItem } from './types'
 
 export const mockOpportunities: Opportunity[] = [

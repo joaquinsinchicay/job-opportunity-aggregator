@@ -1,16 +1,15 @@
+'use client'
+
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PageHeader } from '@/components/page-header'
+import { PageContainer } from '@/components/layout/page-container'
 import { StatsCard } from '@/components/stats-card'
 import { OpportunityCard } from '@/components/opportunity-card'
 import { FollowUpItem } from '@/components/follow-up-item'
 import { EmptyState } from '@/components/empty-state'
-import {
-  mockOpportunities,
-  getUpcomingFollowUps,
-  getRecentOpportunities,
-} from '@/lib/mock-data'
+import { useOpportunities } from '@/lib/contexts/opportunities-context'
 import {
   Plus,
   Briefcase,
@@ -24,18 +23,14 @@ import {
 } from 'lucide-react'
 
 export default function DashboardPage() {
-  const totalOpportunities = mockOpportunities.length
-  const savedCount = mockOpportunities.filter((o) => o.status === 'saved').length
-  const appliedCount = mockOpportunities.filter((o) => o.status === 'applied').length
-  const interviewCount = mockOpportunities.filter((o) => o.status === 'interview').length
-  const offerCount = mockOpportunities.filter((o) => o.status === 'offer').length
-  const rejectedCount = mockOpportunities.filter((o) => o.status === 'rejected').length
-
+  const { getStats, getUpcomingFollowUps, getRecentOpportunities } = useOpportunities()
+  
+  const stats = getStats()
   const upcomingFollowUps = getUpcomingFollowUps()
   const recentOpportunities = getRecentOpportunities(4)
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
+    <PageContainer>
       <PageHeader
         title="Dashboard"
         description="Track your job search progress"
@@ -53,37 +48,37 @@ export default function DashboardPage() {
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <StatsCard
           title="Total"
-          value={totalOpportunities}
+          value={stats.total}
           icon={Briefcase}
           iconClassName="bg-slate-100 text-slate-700"
         />
         <StatsCard
           title="Saved"
-          value={savedCount}
+          value={stats.saved}
           icon={BookmarkCheck}
           iconClassName="bg-slate-100 text-slate-700"
         />
         <StatsCard
           title="Applied"
-          value={appliedCount}
+          value={stats.applied}
           icon={Send}
           iconClassName="bg-blue-50 text-blue-700"
         />
         <StatsCard
           title="Interview"
-          value={interviewCount}
+          value={stats.interview}
           icon={Users}
           iconClassName="bg-amber-50 text-amber-700"
         />
         <StatsCard
           title="Offer"
-          value={offerCount}
+          value={stats.offer}
           icon={Trophy}
           iconClassName="bg-emerald-50 text-emerald-700"
         />
         <StatsCard
           title="Rejected"
-          value={rejectedCount}
+          value={stats.rejected}
           icon={XCircle}
           iconClassName="bg-red-50 text-red-700"
         />
@@ -155,6 +150,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </PageContainer>
   )
 }

@@ -1,30 +1,39 @@
 import { Badge } from '@/components/ui/badge'
-import { WORK_MODE_LABELS, type WorkMode } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { MapPin, Home, Building2 } from 'lucide-react'
+import { WORK_MODE_CONFIG } from '@/lib/constants'
+import type { WorkMode } from '@/lib/types'
+import { Home, Building2, MapPin } from 'lucide-react'
 
 interface WorkModeBadgeProps {
   workMode: WorkMode
+  size?: 'default' | 'sm'
   className?: string
 }
 
-const WORK_MODE_ICONS: Record<WorkMode, React.ReactNode> = {
-  remote: <Home className="h-3 w-3" />,
-  hybrid: <Building2 className="h-3 w-3" />,
-  onsite: <MapPin className="h-3 w-3" />,
+const ICONS = {
+  remote: Home,
+  hybrid: Building2,
+  onsite: MapPin,
 }
 
-export function WorkModeBadge({ workMode, className }: WorkModeBadgeProps) {
+export function WorkModeBadge({ workMode, size = 'default', className }: WorkModeBadgeProps) {
+  const config = WORK_MODE_CONFIG[workMode]
+  const Icon = ICONS[workMode]
+  const isSmall = size === 'sm'
+
   return (
     <Badge
-      variant="secondary"
+      variant="outline"
       className={cn(
-        'gap-1 font-normal text-muted-foreground',
+        'font-normal border gap-1',
+        config.bgColor,
+        config.color,
+        isSmall && 'text-xs px-1.5 py-0',
         className
       )}
     >
-      {WORK_MODE_ICONS[workMode]}
-      {WORK_MODE_LABELS[workMode]}
+      <Icon className={cn(isSmall ? 'h-2.5 w-2.5' : 'h-3 w-3')} />
+      {config.label}
     </Badge>
   )
 }

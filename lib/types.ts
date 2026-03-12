@@ -1,7 +1,14 @@
+// Core entity types
 export type OpportunityStatus = 'saved' | 'applied' | 'interview' | 'offer' | 'rejected'
 
 export type WorkMode = 'remote' | 'hybrid' | 'onsite'
 
+export type ActivityType = 'created' | 'status_changed' | 'pipeline_added' | 'note_added' | 'followup_set'
+
+/**
+ * Opportunity entity
+ * Represents a job opportunity in the user's pipeline
+ */
 export interface Opportunity {
   id: string
   title: string
@@ -16,10 +23,13 @@ export interface Opportunity {
   followUpDate?: string
 }
 
+/**
+ * Activity item for tracking opportunity timeline
+ */
 export interface ActivityItem {
   id: string
   opportunityId: string
-  type: 'created' | 'status_changed' | 'pipeline_added' | 'note_added' | 'followup_set'
+  type: ActivityType
   description: string
   timestamp: string
   metadata?: {
@@ -28,6 +38,41 @@ export interface ActivityItem {
   }
 }
 
+// Input types for creating/updating entities
+// These prepare the codebase for future Supabase integration
+
+/**
+ * Input for creating a new opportunity
+ */
+export interface CreateOpportunityInput {
+  title: string
+  company: string
+  location: string
+  workMode: WorkMode
+  sourceUrl?: string
+  notes?: string
+}
+
+/**
+ * Input for updating an opportunity
+ */
+export interface UpdateOpportunityInput {
+  title?: string
+  company?: string
+  location?: string
+  workMode?: WorkMode
+  status?: OpportunityStatus
+  sourceUrl?: string
+  notes?: string
+  appliedDate?: string
+  followUpDate?: string
+}
+
+// Legacy exports for backward compatibility
+// These are deprecated and will be removed in a future version
+// Use STATUS_CONFIG and WORK_MODE_CONFIG from constants.ts instead
+
+/** @deprecated Use STATUS_CONFIG from constants.ts */
 export const STATUS_LABELS: Record<OpportunityStatus, string> = {
   saved: 'Saved',
   applied: 'Applied',
@@ -36,12 +81,14 @@ export const STATUS_LABELS: Record<OpportunityStatus, string> = {
   rejected: 'Rejected',
 }
 
+/** @deprecated Use WORK_MODE_CONFIG from constants.ts */
 export const WORK_MODE_LABELS: Record<WorkMode, string> = {
   remote: 'Remote',
   hybrid: 'Hybrid',
   onsite: 'Onsite',
 }
 
+/** @deprecated Use STATUS_CONFIG from constants.ts */
 export const STATUS_COLORS: Record<OpportunityStatus, string> = {
   saved: 'bg-slate-100 text-slate-700 border-slate-200',
   applied: 'bg-blue-50 text-blue-700 border-blue-200',

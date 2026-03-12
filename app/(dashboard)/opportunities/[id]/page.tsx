@@ -14,8 +14,11 @@ import {
 } from '@/components/ui/select'
 import { StatusBadge } from '@/components/status-badge'
 import { WorkModeBadge } from '@/components/work-mode-badge'
-import { getOpportunityById, getActivitiesByOpportunityId } from '@/lib/mock-data'
-import { STATUS_LABELS, type OpportunityStatus } from '@/lib/types'
+import { PageContainer } from '@/components/layout/page-container'
+import { useOpportunities } from '@/lib/contexts/opportunities-context'
+import { getActivitiesByOpportunityId } from '@/lib/mock-data'
+import { STATUS_CONFIG } from '@/lib/constants'
+import type { OpportunityStatus } from '@/lib/types'
 import { formatDate, formatDateTime } from '@/lib/date-utils'
 import {
   ArrowLeft,
@@ -49,6 +52,8 @@ export default function OpportunityDetailPage({
   params,
 }: OpportunityDetailPageProps) {
   const { id } = use(params)
+  const { getOpportunityById, updateOpportunityStatus } = useOpportunities()
+  
   const opportunity = getOpportunityById(id)
   const activities = getActivitiesByOpportunityId(id)
 
@@ -56,8 +61,12 @@ export default function OpportunityDetailPage({
     notFound()
   }
 
+  const handleStatusChange = (newStatus: OpportunityStatus) => {
+    updateOpportunityStatus(id, newStatus)
+  }
+
   return (
-    <div className="p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
+    <PageContainer>
       <Button variant="ghost" size="sm" asChild className="mb-4">
         <Link href="/opportunities">
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -221,9 +230,11 @@ export default function OpportunityDetailPage({
                 <Pencil className="mr-2 h-4 w-4" />
                 Edit Opportunity
               </Button>
-              <Button className="w-full" variant="outline">
-                <Kanban className="mr-2 h-4 w-4" />
-                Add to Pipeline
+              <Button className="w-full" variant="outline" asChild>
+                <Link href="/pipeline">
+                  <Kanban className="mr-2 h-4 w-4" />
+                  View in Pipeline
+                </Link>
               </Button>
               <Button className="w-full" variant="outline">
                 <Bell className="mr-2 h-4 w-4" />
@@ -237,14 +248,17 @@ export default function OpportunityDetailPage({
               <CardTitle className="text-lg">Change Status</CardTitle>
             </CardHeader>
             <CardContent>
-              <Select defaultValue={opportunity.status}>
+              <Select 
+                value={opportunity.status}
+                onValueChange={(value) => handleStatusChange(value as OpportunityStatus)}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {(
-                    Object.entries(STATUS_LABELS) as [OpportunityStatus, string][]
-                  ).map(([value, label]) => (
+                    Object.entries(STATUS_CONFIG) as [OpportunityStatus, { label: string }][]
+                  ).map(([value, { label }]) => (
                     <SelectItem key={value} value={value}>
                       {label}
                     </SelectItem>
@@ -258,6 +272,6 @@ export default function OpportunityDetailPage({
           </Card>
         </div>
       </div>
-    </div>
+    </PageContainer>
   )
 }
