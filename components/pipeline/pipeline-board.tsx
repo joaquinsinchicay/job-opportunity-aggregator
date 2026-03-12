@@ -27,7 +27,8 @@ export function PipelineBoard({ opportunities, onStatusChange }: PipelineBoardPr
 
   const handleDrop = (e: React.DragEvent, newStatus: OpportunityStatus) => {
     e.preventDefault()
-    const opportunityId = e.dataTransfer.getData('text/plain')
+    const droppedId = e.dataTransfer.getData('text/plain')
+    const opportunityId = droppedId || draggedId
 
     if (opportunityId) {
       onStatusChange(opportunityId, newStatus)

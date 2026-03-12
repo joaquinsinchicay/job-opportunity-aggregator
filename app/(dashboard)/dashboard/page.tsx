@@ -10,6 +10,8 @@ import { OpportunityCard } from '@/components/opportunity-card'
 import { FollowUpItem } from '@/components/follow-up-item'
 import { EmptyState } from '@/components/empty-state'
 import { useOpportunities } from '@/lib/contexts/opportunities-context'
+import { getOpportunityStats, getRecentOpportunities, getUpcomingFollowUps } from '@/lib/selectors/opportunities'
+import { useMemo } from 'react'
 import {
   Plus,
   Briefcase,
@@ -23,11 +25,11 @@ import {
 } from 'lucide-react'
 
 export default function DashboardPage() {
-  const { getStats, getUpcomingFollowUps, getRecentOpportunities } = useOpportunities()
-  
-  const stats = getStats()
-  const upcomingFollowUps = getUpcomingFollowUps()
-  const recentOpportunities = getRecentOpportunities(4)
+  const { opportunities } = useOpportunities()
+
+  const stats = useMemo(() => getOpportunityStats(opportunities), [opportunities])
+  const upcomingFollowUps = useMemo(() => getUpcomingFollowUps(opportunities), [opportunities])
+  const recentOpportunities = useMemo(() => getRecentOpportunities(opportunities, 4), [opportunities])
 
   return (
     <PageContainer>
