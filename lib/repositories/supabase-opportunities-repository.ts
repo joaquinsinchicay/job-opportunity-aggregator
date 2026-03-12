@@ -56,7 +56,7 @@ function toActivity(row: Record<string, unknown>): ActivityItem {
     opportunityId: getString(row, 'opportunity_id', 'opportunityId'),
     type: getString(row, 'type') as ActivityItem['type'],
     description: getString(row, 'description'),
-    timestamp: getString(row, 'timestamp'),
+    timestamp: getString(row, 'created_at', 'timestamp'),
     metadata: metadata ?? undefined,
   }
 }
@@ -202,7 +202,7 @@ export class SupabaseOpportunitiesRepository implements OpportunitiesRepository 
             opportunity_id: opportunityId,
             type: 'created',
             description: 'Opportunity created',
-            timestamp: now,
+            created_at: now,
           },
         ]),
       }
@@ -288,7 +288,7 @@ export class SupabaseOpportunitiesRepository implements OpportunitiesRepository 
             opportunity_id: id,
             type: 'status_changed',
             description: `Status changed from ${current.status} to ${status}`,
-            timestamp: now,
+            created_at: now,
             metadata: {
               fromStatus: current.status,
               toStatus: status,
@@ -330,7 +330,7 @@ export class SupabaseOpportunitiesRepository implements OpportunitiesRepository 
       `activities?${buildQuery({
         select: '*',
         opportunity_id: `eq.${opportunityId}`,
-        order: 'timestamp.desc',
+        order: 'created_at.desc',
       })}`
     )
 
@@ -340,7 +340,7 @@ export class SupabaseOpportunitiesRepository implements OpportunitiesRepository 
   async listActivities(): Promise<ActivityItem[]> {
     const rows = await supabaseRestFetch<DbRow[]>(
       this.config,
-      `activities?${buildQuery({ select: '*', order: 'timestamp.desc' })}`
+      `activities?${buildQuery({ select: '*', order: 'created_at.desc' })}`
     )
 
     return rows.map(toActivity)
