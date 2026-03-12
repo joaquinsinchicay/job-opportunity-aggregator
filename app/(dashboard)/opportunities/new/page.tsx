@@ -21,6 +21,11 @@ import { WORK_MODE_CONFIG } from '@/lib/constants'
 import type { WorkMode, CreateOpportunityInput } from '@/lib/types'
 import { ArrowLeft, Link as LinkIcon, Building2, MapPin, Briefcase, FileText } from 'lucide-react'
 
+
+interface NewOpportunityFormData extends Omit<CreateOpportunityInput, 'workMode'> {
+  workMode: WorkMode | ''
+}
+
 interface FormErrors {
   sourceUrl?: string
   title?: string
@@ -33,7 +38,7 @@ export default function NewOpportunityPage() {
   const router = useRouter()
   const { addOpportunity } = useOpportunities()
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [formData, setFormData] = useState<CreateOpportunityInput & { workMode: WorkMode | '' }>({
+  const [formData, setFormData] = useState<NewOpportunityFormData>({
     sourceUrl: '',
     title: '',
     company: '',
@@ -83,11 +88,7 @@ export default function NewOpportunityPage() {
 
     setIsSubmitting(true)
 
-    // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 300))
-
-    // Add opportunity using context
-    addOpportunity({
+    await addOpportunity({
       title: formData.title,
       company: formData.company,
       location: formData.location,
