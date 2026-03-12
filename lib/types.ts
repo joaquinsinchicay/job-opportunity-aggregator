@@ -68,6 +68,16 @@ export interface UpdateOpportunityInput {
   followUpDate?: string
 }
 
+
+export interface OpportunityStats {
+  total: number
+  saved: number
+  applied: number
+  interview: number
+  offer: number
+  rejected: number
+}
+
 // Legacy exports for backward compatibility
 // These are deprecated and will be removed in a future version
 // Use STATUS_CONFIG and WORK_MODE_CONFIG from constants.ts instead

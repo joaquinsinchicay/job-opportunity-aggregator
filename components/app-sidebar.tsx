@@ -6,24 +6,13 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { LayoutDashboard, Briefcase, Kanban, Plus, Menu, X } from 'lucide-react'
 import { useState } from 'react'
+import { NAVIGATION_ITEMS } from '@/lib/constants'
 
-const navigation = [
-  {
-    name: 'Dashboard',
-    href: '/dashboard',
-    icon: LayoutDashboard,
-  },
-  {
-    name: 'Opportunities',
-    href: '/opportunities',
-    icon: Briefcase,
-  },
-  {
-    name: 'Pipeline',
-    href: '/pipeline',
-    icon: Kanban,
-  },
-]
+const ICONS = {
+  LayoutDashboard,
+  Briefcase,
+  Kanban,
+}
 
 export function AppSidebar() {
   const pathname = usePathname()
@@ -39,11 +28,7 @@ export function AppSidebar() {
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           className="bg-card"
         >
-          {mobileMenuOpen ? (
-            <X className="h-5 w-5" />
-          ) : (
-            <Menu className="h-5 w-5" />
-          )}
+          {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           <span className="sr-only">Toggle menu</span>
         </Button>
       </div>
@@ -69,15 +54,14 @@ export function AppSidebar() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <Briefcase className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="text-base font-semibold text-foreground">
-              Job Aggregator
-            </span>
+            <span className="text-base font-semibold text-foreground">Job Aggregator</span>
           </div>
 
           {/* Navigation */}
           <nav className="flex-1 space-y-1 px-3 py-4">
-            {navigation.map((item) => {
+            {NAVIGATION_ITEMS.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
+              const Icon = ICONS[item.icon]
               return (
                 <Link
                   key={item.name}
@@ -90,7 +74,7 @@ export function AppSidebar() {
                       : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                   )}
                 >
-                  <item.icon className="h-5 w-5" />
+                  <Icon className="h-5 w-5" />
                   {item.name}
                 </Link>
               )

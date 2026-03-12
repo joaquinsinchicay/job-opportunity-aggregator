@@ -1,43 +1,19 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
-import type { Opportunity, OpportunityStatus, CreateOpportunityInput } from '../types'
-import { mockOpportunities } from '../mock-data'
-
-/**
- * Opportunities Context
- * 
- * Provides global state management for opportunities data.
- * This context enables optimistic updates and state sharing across components.
- * 
- * In a real implementation, this would integrate with SWR or React Query
- * for server state management with Supabase.
- */
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
+import type { ActivityItem, Opportunity, OpportunityStatus, CreateOpportunityInput } from '../types'
+import { getOpportunitiesRepository } from '@/lib/repositories'
 
 interface OpportunitiesContextValue {
   opportunities: Opportunity[]
+  activities: ActivityItem[]
   isLoading: boolean
   error: Error | null
-  
-  // Actions
-  updateOpportunityStatus: (id: string, status: OpportunityStatus) => void
-  addOpportunity: (input: CreateOpportunityInput) => Opportunity
-  deleteOpportunity: (id: string) => void
-  refreshOpportunities: () => void
-  
-  // Computed values
-  getOpportunityById: (id: string) => Opportunity | undefined
-  getOpportunitiesByStatus: (status: OpportunityStatus) => Opportunity[]
-  getUpcomingFollowUps: () => Opportunity[]
-  getRecentOpportunities: (limit?: number) => Opportunity[]
-  getStats: () => {
-    total: number
-    saved: number
-    applied: number
-    interview: number
-    offer: number
-    rejected: number
-  }
+
+  updateOpportunityStatus: (id: string, status: OpportunityStatus) => Promise<void>
+  addOpportunity: (input: CreateOpportunityInput) => Promise<void>
+  deleteOpportunity: (id: string) => Promise<void>
+  refreshOpportunities: () => Promise<void>
 }
 
 const OpportunitiesContext = createContext<OpportunitiesContextValue | undefined>(undefined)
@@ -48,106 +24,82 @@ interface OpportunitiesProviderProps {
 }
 
 export function OpportunitiesProvider({ children, initialData }: OpportunitiesProviderProps) {
-  const [opportunities, setOpportunities] = useState<Opportunity[]>(initialData ?? mockOpportunities)
-  const [isLoading, setIsLoading] = useState(false)
+  const repository = getOpportunitiesRepository()
+  const [opportunities, setOpportunities] = useState<Opportunity[]>(initialData ?? [])
+  const [activities, setActivities] = useState<ActivityItem[]>([])
+  const [isLoading, setIsLoading] = useState(!initialData)
   const [error, setError] = useState<Error | null>(null)
 
-  const updateOpportunityStatus = useCallback((id: string, status: OpportunityStatus) => {
-    setOpportunities(prev =>
-      prev.map(opp =>
-        opp.id === id
-          ? {
-              ...opp,
-              status,
-              appliedDate: status === 'applied' && !opp.appliedDate
-                ? new Date().toISOString()
-                : opp.appliedDate,
-            }
-          : opp
-      )
-    )
-  }, [])
-
-  const addOpportunity = useCallback((input: CreateOpportunityInput): Opportunity => {
-    const newOpportunity: Opportunity = {
-      id: `opp_${Date.now()}`,
-      title: input.title,
-      company: input.company,
-      location: input.location,
-      workMode: input.workMode,
-      status: 'saved',
-      sourceUrl: input.sourceUrl ?? '',
-      notes: input.notes ?? '',
-      createdAt: new Date().toISOString(),
-    }
-    
-    setOpportunities(prev => [newOpportunity, ...prev])
-    return newOpportunity
-  }, [])
-
-  const deleteOpportunity = useCallback((id: string) => {
-    setOpportunities(prev => prev.filter(opp => opp.id !== id))
-  }, [])
-
-  const refreshOpportunities = useCallback(() => {
+  const refreshOpportunities = useCallback(async () => {
     setIsLoading(true)
-    // Simulate API call
-    setTimeout(() => {
-      setOpportunities(mockOpportunities)
+    setError(null)
+
+    try {
+      const [nextOpportunities, nextActivities] = await Promise.all([
+        repository.listOpportunities(),
+        repository.listActivities(),
+      ])
+      setOpportunities(nextOpportunities)
+      setActivities(nextActivities)
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Failed to load opportunities'))
+    } finally {
       setIsLoading(false)
-    }, 100)
-  }, [])
+    }
+  }, [repository])
 
-  const getOpportunityById = useCallback((id: string) => {
-    return opportunities.find(opp => opp.id === id)
-  }, [opportunities])
+  useEffect(() => {
+    if (!initialData) {
+      void refreshOpportunities()
+    }
+  }, [initialData, refreshOpportunities])
 
-  const getOpportunitiesByStatus = useCallback((status: OpportunityStatus) => {
-    return opportunities.filter(opp => opp.status === status)
-  }, [opportunities])
+  const updateOpportunityStatus = useCallback(
+    async (id: string, status: OpportunityStatus) => {
+      setError(null)
+      const result = await repository.updateOpportunityStatus(id, status)
+      if (!result.opportunity) return
 
-  const getUpcomingFollowUps = useCallback(() => {
-    const now = new Date()
-    return opportunities
-      .filter(opp => opp.followUpDate && new Date(opp.followUpDate) > now)
-      .sort((a, b) => new Date(a.followUpDate!).getTime() - new Date(b.followUpDate!).getTime())
-  }, [opportunities])
+      setOpportunities((prev) => prev.map((opp) => (opp.id === id ? result.opportunity! : opp)))
+      if (!result.activity) return
 
-  const getRecentOpportunities = useCallback((limit = 5) => {
-    return [...opportunities]
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, limit)
-  }, [opportunities])
+      setActivities((prev) => [result.activity!, ...prev])
+    },
+    [repository]
+  )
 
-  const getStats = useCallback(() => ({
-    total: opportunities.length,
-    saved: opportunities.filter(o => o.status === 'saved').length,
-    applied: opportunities.filter(o => o.status === 'applied').length,
-    interview: opportunities.filter(o => o.status === 'interview').length,
-    offer: opportunities.filter(o => o.status === 'offer').length,
-    rejected: opportunities.filter(o => o.status === 'rejected').length,
-  }), [opportunities])
+  const addOpportunity = useCallback(
+    async (input: CreateOpportunityInput) => {
+      setError(null)
+      const result = await repository.createOpportunity(input)
+      setOpportunities((prev) => [result.opportunity, ...prev])
+      setActivities((prev) => [result.activity, ...prev])
+    },
+    [repository]
+  )
+
+  const deleteOpportunity = useCallback(
+    async (id: string) => {
+      setError(null)
+      await repository.deleteOpportunity(id)
+      setOpportunities((prev) => prev.filter((opp) => opp.id !== id))
+      setActivities((prev) => prev.filter((activity) => activity.opportunityId !== id))
+    },
+    [repository]
+  )
 
   const value: OpportunitiesContextValue = {
     opportunities,
+    activities,
     isLoading,
     error,
     updateOpportunityStatus,
     addOpportunity,
     deleteOpportunity,
     refreshOpportunities,
-    getOpportunityById,
-    getOpportunitiesByStatus,
-    getUpcomingFollowUps,
-    getRecentOpportunities,
-    getStats,
   }
 
-  return (
-    <OpportunitiesContext.Provider value={value}>
-      {children}
-    </OpportunitiesContext.Provider>
-  )
+  return <OpportunitiesContext.Provider value={value}>{children}</OpportunitiesContext.Provider>
 }
 
 export function useOpportunities() {

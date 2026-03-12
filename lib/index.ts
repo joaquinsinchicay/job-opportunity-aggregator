@@ -10,3 +10,9 @@ export { cn } from './utils'
 
 // Context
 export { OpportunitiesProvider, useOpportunities } from './contexts/opportunities-context'
+
+// Selectors
+export * from './selectors/opportunities'
+
+// Repositories
+export * from './repositories/opportunities-repository'
