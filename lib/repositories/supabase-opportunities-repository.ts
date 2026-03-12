@@ -20,6 +20,7 @@ function getString(row: Record<string, unknown>, ...keys: string[]): string {
   for (const key of keys) {
     const value = row[key]
     if (typeof value === 'string') return value
+    if (typeof value === 'number' || typeof value === 'bigint') return String(value)
   }
   return ''
 }
