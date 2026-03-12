@@ -18,6 +18,7 @@ import { EmptyState } from '@/components/empty-state'
 import { useOpportunities } from '@/lib/contexts/opportunities-context'
 import { WORK_MODE_CONFIG, LOCATION_OPTIONS } from '@/lib/constants'
 import type { WorkMode } from '@/lib/types'
+import { filterOpportunities } from '@/lib/selectors/opportunities'
 import { Plus, Search, Briefcase } from 'lucide-react'
 
 export default function OpportunitiesPage() {
@@ -26,27 +27,15 @@ export default function OpportunitiesPage() {
   const [locationFilter, setLocationFilter] = useState('All Locations')
   const [workModeFilter, setWorkModeFilter] = useState<WorkMode | 'all'>('all')
 
-  const filteredOpportunities = useMemo(() => {
-    return opportunities.filter((opp) => {
-      // Search filter
-      const searchLower = searchQuery.toLowerCase()
-      const matchesSearch =
-        searchQuery === '' ||
-        opp.title.toLowerCase().includes(searchLower) ||
-        opp.company.toLowerCase().includes(searchLower) ||
-        opp.location.toLowerCase().includes(searchLower)
-
-      // Location filter
-      const matchesLocation =
-        locationFilter === 'All Locations' || opp.location === locationFilter
-
-      // Work mode filter
-      const matchesWorkMode =
-        workModeFilter === 'all' || opp.workMode === workModeFilter
-
-      return matchesSearch && matchesLocation && matchesWorkMode
-    })
-  }, [opportunities, searchQuery, locationFilter, workModeFilter])
+  const filteredOpportunities = useMemo(
+    () =>
+      filterOpportunities(opportunities, {
+        search: searchQuery,
+        location: locationFilter,
+        workMode: workModeFilter,
+      }),
+    [opportunities, searchQuery, locationFilter, workModeFilter]
+  )
 
   const hasFilters =
     searchQuery !== '' ||
