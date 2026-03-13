@@ -7,6 +7,7 @@ import {
 } from '@/lib/types'
 import {
   getSupabaseClientConfig,
+  readStoredSession,
   supabaseRestFetch,
   type SupabaseClientConfig,
 } from '@/lib/supabase/client'
@@ -105,9 +106,20 @@ export class SupabaseOpportunitiesRepository implements OpportunitiesRepository 
     this.config = resolved
   }
 
+
+  private getAccessToken(): string | undefined {
+    const session = readStoredSession()
+    if (!session) return undefined
+    if (session.expiresAt <= Date.now()) return undefined
+    return session.accessToken
+  }
+
+  private request<T>(path: string, init: RequestInit = {}): Promise<T> {
+    return supabaseRestFetch<T>(this.config, path, init, this.getAccessToken())
+  }
+
   private async listFollowUps(): Promise<Map<string, string>> {
-    const rows = await supabaseRestFetch<DbRow[]>(
-      this.config,
+    const rows = await this.request<DbRow[]>(
       `followups?${buildQuery({ select: 'opportunity_id,follow_up_date,due_at,scheduled_for' })}`
     )
 
@@ -125,10 +137,7 @@ export class SupabaseOpportunitiesRepository implements OpportunitiesRepository 
 
   async listOpportunities(): Promise<Opportunity[]> {
     const [rows, followUps] = await Promise.all([
-      supabaseRestFetch<DbRow[]>(
-        this.config,
-        `opportunities?${buildQuery({ select: '*', order: 'created_at.desc' })}`
-      ),
+      this.request<DbRow[]>(`opportunities?${buildQuery({ select: '*', order: 'created_at.desc' })}`),
       this.listFollowUps(),
     ])
 
@@ -136,16 +145,14 @@ export class SupabaseOpportunitiesRepository implements OpportunitiesRepository 
   }
 
   async getOpportunityById(id: string): Promise<Opportunity | null> {
-    const rows = await supabaseRestFetch<DbRow[]>(
-      this.config,
+    const rows = await this.request<DbRow[]>(
       `opportunities?${buildQuery({ select: '*', id: `eq.${id}`, limit: 1 })}`
     )
 
     const row = rows[0]
     if (!row) return null
 
-    const followUpRows = await supabaseRestFetch<DbRow[]>(
-      this.config,
+    const followUpRows = await this.request<DbRow[]>(
       `followups?${buildQuery({
         select: 'follow_up_date,due_at,scheduled_for',
         opportunity_id: `eq.${id}`,
@@ -165,8 +172,7 @@ export class SupabaseOpportunitiesRepository implements OpportunitiesRepository 
     const opportunityId = safeId()
     const activityId = safeId()
 
-    const insertedOpportunities = await supabaseRestFetch<DbRow[]>(
-      this.config,
+    const insertedOpportunities = await this.request<DbRow[]>(
       `opportunities?${buildQuery({ select: '*' })}`,
       {
         method: 'POST',
@@ -189,8 +195,7 @@ export class SupabaseOpportunitiesRepository implements OpportunitiesRepository 
       }
     )
 
-    const insertedActivities = await supabaseRestFetch<DbRow[]>(
-      this.config,
+    const insertedActivities = await this.request<DbRow[]>(
       `activities?${buildQuery({ select: '*' })}`,
       {
         method: 'POST',
@@ -218,8 +223,7 @@ export class SupabaseOpportunitiesRepository implements OpportunitiesRepository 
   async updateOpportunity(id: string, input: UpdateOpportunityInput): Promise<Opportunity | null> {
     const payload = mapOpportunityInput(input)
 
-    const rows = await supabaseRestFetch<DbRow[]>(
-      this.config,
+    const rows = await this.request<DbRow[]>(
       `opportunities?${buildQuery({ select: '*', id: `eq.${id}` })}`,
       {
         method: 'PATCH',
@@ -248,8 +252,7 @@ export class SupabaseOpportunitiesRepository implements OpportunitiesRepository 
     const now = new Date().toISOString()
     const nextAppliedDate = status === 'applied' && !current.appliedDate ? now : current.appliedDate
 
-    const rows = await supabaseRestFetch<DbRow[]>(
-      this.config,
+    const rows = await this.request<DbRow[]>(
       `opportunities?${buildQuery({ select: '*', id: `eq.${id}` })}`,
       {
         method: 'PATCH',
@@ -275,8 +278,7 @@ export class SupabaseOpportunitiesRepository implements OpportunitiesRepository 
     }
 
     const activityId = safeId()
-    const activityRows = await supabaseRestFetch<DbRow[]>(
-      this.config,
+    const activityRows = await this.request<DbRow[]>(
       `activities?${buildQuery({ select: '*' })}`,
       {
         method: 'POST',
@@ -307,17 +309,15 @@ export class SupabaseOpportunitiesRepository implements OpportunitiesRepository 
 
   async deleteOpportunity(id: string): Promise<boolean> {
     await Promise.all([
-      supabaseRestFetch<null>(
-        this.config,
+      this.request<null>(
         `followups?${buildQuery({ opportunity_id: `eq.${id}` })}`,
         { method: 'DELETE' }
       ),
-      supabaseRestFetch<null>(
-        this.config,
+      this.request<null>(
         `activities?${buildQuery({ opportunity_id: `eq.${id}` })}`,
         { method: 'DELETE' }
       ),
-      supabaseRestFetch<null>(this.config, `opportunities?${buildQuery({ id: `eq.${id}` })}`, {
+      this.request<null>(`opportunities?${buildQuery({ id: `eq.${id}` })}`, {
         method: 'DELETE',
       }),
     ])
@@ -326,8 +326,7 @@ export class SupabaseOpportunitiesRepository implements OpportunitiesRepository 
   }
 
   async listActivitiesByOpportunityId(opportunityId: string): Promise<ActivityItem[]> {
-    const rows = await supabaseRestFetch<DbRow[]>(
-      this.config,
+    const rows = await this.request<DbRow[]>(
       `activities?${buildQuery({
         select: '*',
         opportunity_id: `eq.${opportunityId}`,
@@ -339,8 +338,7 @@ export class SupabaseOpportunitiesRepository implements OpportunitiesRepository 
   }
 
   async listActivities(): Promise<ActivityItem[]> {
-    const rows = await supabaseRestFetch<DbRow[]>(
-      this.config,
+    const rows = await this.request<DbRow[]>(
       `activities?${buildQuery({ select: '*', order: 'created_at.desc' })}`
     )
 
@@ -348,8 +346,7 @@ export class SupabaseOpportunitiesRepository implements OpportunitiesRepository 
   }
 
   private async getFollowUpDate(opportunityId: string): Promise<string | undefined> {
-    const rows = await supabaseRestFetch<DbRow[]>(
-      this.config,
+    const rows = await this.request<DbRow[]>(
       `followups?${buildQuery({
         select: 'follow_up_date,due_at,scheduled_for',
         opportunity_id: `eq.${opportunityId}`,
@@ -363,16 +360,14 @@ export class SupabaseOpportunitiesRepository implements OpportunitiesRepository 
 
   private async upsertFollowUp(opportunityId: string, followUpDate?: string): Promise<void> {
     if (!followUpDate) {
-      await supabaseRestFetch<null>(
-        this.config,
+      await this.request<null>(
         `followups?${buildQuery({ opportunity_id: `eq.${opportunityId}` })}`,
         { method: 'DELETE' }
       )
       return
     }
 
-    await supabaseRestFetch<DbRow[]>(
-      this.config,
+    await this.request<DbRow[]>(
       `followups?${buildQuery({ on_conflict: 'opportunity_id', select: '*' })}`,
       {
         method: 'POST',

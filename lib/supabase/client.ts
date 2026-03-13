@@ -3,6 +3,28 @@ export interface SupabaseClientConfig {
   anonKey: string
 }
 
+export interface SupabaseSession {
+  accessToken: string
+  refreshToken: string
+  expiresAt: number
+  user: {
+    id: string
+    email?: string
+  }
+}
+
+interface SupabaseTokenResponse {
+  access_token: string
+  refresh_token: string
+  expires_in: number
+  user: {
+    id: string
+    email?: string
+  }
+}
+
+const SESSION_STORAGE_KEY = 'job-opportunity-aggregator:supabase-session'
+
 function trimTrailingSlash(url: string): string {
   return url.endsWith('/') ? url.slice(0, -1) : url
 }
@@ -28,13 +50,14 @@ export function isSupabaseConfigured(): boolean {
 export async function supabaseRestFetch<T>(
   config: SupabaseClientConfig,
   path: string,
-  init: RequestInit = {}
+  init: RequestInit = {},
+  accessToken?: string
 ): Promise<T> {
   const response = await fetch(`${config.url}/rest/v1/${path}`, {
     ...init,
     headers: {
       apikey: config.anonKey,
-      Authorization: `Bearer ${config.anonKey}`,
+      Authorization: `Bearer ${accessToken ?? config.anonKey}`,
       'Content-Type': 'application/json',
       ...(init.headers ?? {}),
     },
@@ -51,4 +74,63 @@ export async function supabaseRestFetch<T>(
   }
 
   return JSON.parse(text) as T
+}
+
+function toSession(response: SupabaseTokenResponse): SupabaseSession {
+  return {
+    accessToken: response.access_token,
+    refreshToken: response.refresh_token,
+    expiresAt: Date.now() + response.expires_in * 1000,
+    user: {
+      id: response.user.id,
+      email: response.user.email,
+    },
+  }
+}
+
+export async function signInWithPassword(
+  config: SupabaseClientConfig,
+  email: string,
+  password: string
+): Promise<SupabaseSession> {
+  const response = await fetch(`${config.url}/auth/v1/token?grant_type=password`, {
+    method: 'POST',
+    headers: {
+      apikey: config.anonKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email, password }),
+  })
+
+  if (!response.ok) {
+    const body = await response.text()
+    throw new Error(`Supabase auth error (${response.status}): ${body}`)
+  }
+
+  const body = (await response.json()) as SupabaseTokenResponse
+  return toSession(body)
+}
+
+export function readStoredSession(): SupabaseSession | null {
+  if (typeof window === 'undefined') return null
+
+  const raw = window.localStorage.getItem(SESSION_STORAGE_KEY)
+  if (!raw) return null
+
+  try {
+    return JSON.parse(raw) as SupabaseSession
+  } catch {
+    window.localStorage.removeItem(SESSION_STORAGE_KEY)
+    return null
+  }
+}
+
+export function storeSession(session: SupabaseSession): void {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session))
+}
+
+export function clearStoredSession(): void {
+  if (typeof window === 'undefined') return
+  window.localStorage.removeItem(SESSION_STORAGE_KEY)
 }
