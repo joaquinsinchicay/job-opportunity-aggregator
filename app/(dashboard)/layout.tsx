@@ -1,5 +1,6 @@
 import { AppShell } from '@/components/app-shell'
 import { OpportunitiesProvider } from '@/lib/contexts/opportunities-context'
+import { AuthGate } from '@/components/auth/auth-gate'
 
 export default function DashboardLayout({
   children,
@@ -7,8 +8,10 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   return (
-    <OpportunitiesProvider>
-      <AppShell>{children}</AppShell>
-    </OpportunitiesProvider>
+    <AuthGate>
+      <OpportunitiesProvider>
+        <AppShell>{children}</AppShell>
+      </OpportunitiesProvider>
+    </AuthGate>
   )
 }

@@ -1,12 +1,13 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { LayoutDashboard, Briefcase, Kanban, Plus, Menu, X } from 'lucide-react'
+import { LayoutDashboard, Briefcase, Kanban, Plus, Menu, X, LogOut } from 'lucide-react'
 import { useState } from 'react'
 import { NAVIGATION_ITEMS } from '@/lib/constants'
+import { signOut } from '@/lib/supabase/auth'
 
 const ICONS = {
   LayoutDashboard,
@@ -16,7 +17,14 @@ const ICONS = {
 
 export function AppSidebar() {
   const pathname = usePathname()
+  const router = useRouter()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  const handleLogout = async () => {
+    await signOut()
+    setMobileMenuOpen(false)
+    router.replace('/login')
+  }
 
   return (
     <>
@@ -81,13 +89,17 @@ export function AppSidebar() {
             })}
           </nav>
 
-          {/* Add opportunity button */}
-          <div className="border-t border-border p-4">
+          {/* Actions */}
+          <div className="border-t border-border p-4 space-y-2">
             <Button asChild className="w-full">
               <Link href="/opportunities/new">
                 <Plus className="mr-2 h-4 w-4" />
                 Add Opportunity
               </Link>
+            </Button>
+            <Button variant="outline" className="w-full" onClick={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
             </Button>
           </div>
         </div>
