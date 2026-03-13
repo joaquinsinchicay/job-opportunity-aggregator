@@ -105,11 +105,27 @@ export class SupabaseOpportunitiesRepository implements OpportunitiesRepository 
     this.config = resolved
   }
 
-  private async listFollowUps(): Promise<Map<string, string>> {
-    const rows = await supabaseRestFetch<DbRow[]>(
+
+  private async fetchFollowUps(
+    filters: Record<string, string | number | undefined> = {}
+  ): Promise<DbRow[]> {
+    return supabaseRestFetch<DbRow[]>(
       this.config,
-      `followups?${buildQuery({ select: 'opportunity_id,follow_up_date,due_at,scheduled_for' })}`
+      `followups?${buildQuery({ select: '*', ...filters })}`
     )
+  }
+
+  private async fetchActivities(
+    filters: Record<string, string | number | undefined> = {}
+  ): Promise<DbRow[]> {
+    return supabaseRestFetch<DbRow[]>(
+      this.config,
+      `activities?${buildQuery({ select: '*', ...filters })}`
+    )
+  }
+
+  private async listFollowUps(): Promise<Map<string, string>> {
+    const rows = await this.fetchFollowUps()
 
     const map = new Map<string, string>()
     rows.forEach((row) => {
@@ -144,14 +160,10 @@ export class SupabaseOpportunitiesRepository implements OpportunitiesRepository 
     const row = rows[0]
     if (!row) return null
 
-    const followUpRows = await supabaseRestFetch<DbRow[]>(
-      this.config,
-      `followups?${buildQuery({
-        select: 'follow_up_date,due_at,scheduled_for',
-        opportunity_id: `eq.${id}`,
-        limit: 1,
-      })}`
-    )
+    const followUpRows = await this.fetchFollowUps({
+      opportunity_id: `eq.${id}`,
+      limit: 1,
+    })
 
     const followUpDate = followUpRows[0]
       ? getOptionalString(followUpRows[0], 'follow_up_date', 'scheduled_for', 'due_at')
@@ -325,36 +337,24 @@ export class SupabaseOpportunitiesRepository implements OpportunitiesRepository 
   }
 
   async listActivitiesByOpportunityId(opportunityId: string): Promise<ActivityItem[]> {
-    const rows = await supabaseRestFetch<DbRow[]>(
-      this.config,
-      `activities?${buildQuery({
-        select: '*',
-        opportunity_id: `eq.${opportunityId}`,
-        order: 'created_at.desc',
-      })}`
-    )
+    const rows = await this.fetchActivities({
+      opportunity_id: `eq.${opportunityId}`,
+    })
 
-    return rows.map(toActivity)
+    return rows.map(toActivity).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
   }
 
   async listActivities(): Promise<ActivityItem[]> {
-    const rows = await supabaseRestFetch<DbRow[]>(
-      this.config,
-      `activities?${buildQuery({ select: '*', order: 'created_at.desc' })}`
-    )
+    const rows = await this.fetchActivities()
 
-    return rows.map(toActivity)
+    return rows.map(toActivity).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
   }
 
   private async getFollowUpDate(opportunityId: string): Promise<string | undefined> {
-    const rows = await supabaseRestFetch<DbRow[]>(
-      this.config,
-      `followups?${buildQuery({
-        select: 'follow_up_date,due_at,scheduled_for',
-        opportunity_id: `eq.${opportunityId}`,
-        limit: 1,
-      })}`
-    )
+    const rows = await this.fetchFollowUps({
+      opportunity_id: `eq.${opportunityId}`,
+      limit: 1,
+    })
 
     if (!rows[0]) return undefined
     return getOptionalString(rows[0], 'follow_up_date', 'scheduled_for', 'due_at')
