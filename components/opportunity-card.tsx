@@ -9,7 +9,7 @@ import { WorkModeBadge } from '@/components/work-mode-badge'
 import type { Opportunity } from '@/lib/types'
 import { useOpportunities } from '@/lib/contexts/opportunities-context'
 import { formatDistanceToNow } from '@/lib/date-utils'
-import { Building2, ExternalLink, MapPin, MoreHorizontal, Eye, Kanban, Pencil } from 'lucide-react'
+import { Building2, ExternalLink, MapPin, MoreHorizontal, Eye, Kanban, Pencil, Trash2 } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,7 +25,7 @@ interface OpportunityCardProps {
 export function OpportunityCard({ opportunity, variant = 'default' }: OpportunityCardProps) {
   const isCompact = variant === 'compact'
   const router = useRouter()
-  const { updateOpportunityStatus } = useOpportunities()
+  const { updateOpportunityStatus, deleteOpportunity } = useOpportunities()
 
   const handleAddToPipeline = () => {
     if (opportunity.status !== 'applied') {
@@ -35,6 +35,13 @@ export function OpportunityCard({ opportunity, variant = 'default' }: Opportunit
 
   const handleEdit = () => {
     router.push(`/opportunities/${opportunity.id}/edit`)
+  }
+
+  const handleDelete = () => {
+    const shouldDelete = window.confirm('Are you sure you want to delete this opportunity?')
+    if (!shouldDelete) return
+
+    void deleteOpportunity(opportunity.id)
   }
 
   return (
@@ -76,6 +83,10 @@ export function OpportunityCard({ opportunity, variant = 'default' }: Opportunit
               <DropdownMenuItem onSelect={handleEdit}>
                 <Pencil className="mr-2 h-4 w-4" />
                 Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleDelete} className="text-destructive focus:text-destructive">
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
