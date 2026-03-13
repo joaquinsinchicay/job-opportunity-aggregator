@@ -36,9 +36,12 @@ let repositoryInstance: OpportunitiesRepository | undefined
 
 export function getOpportunitiesRepository(): OpportunitiesRepository {
   if (!repositoryInstance) {
+    const configuredKind = process.env.NEXT_PUBLIC_OPPORTUNITIES_REPOSITORY_KIND as
+      | OpportunitiesRepositoryKind
+      | undefined
+
     repositoryInstance = createOpportunitiesRepository({
-      kind: (process.env.NEXT_PUBLIC_OPPORTUNITIES_REPOSITORY_KIND as OpportunitiesRepositoryKind | undefined) ??
-        'memory',
+      kind: configuredKind ?? (isSupabaseConfigured() ? 'supabase' : 'memory'),
     })
   }
 

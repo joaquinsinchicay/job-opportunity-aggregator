@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useMemo, useState } from 'react'
+import { use, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -52,6 +52,18 @@ export default function EditOpportunityPage({ params }: EditOpportunityPageProps
     workMode: (opportunity?.workMode ?? '') as WorkMode | '',
     notes: opportunity?.notes ?? '',
   }))
+
+  useEffect(() => {
+    if (!opportunity) return
+    setFormData({
+      sourceUrl: opportunity.sourceUrl,
+      title: opportunity.title,
+      company: opportunity.company,
+      location: opportunity.location,
+      workMode: opportunity.workMode,
+      notes: opportunity.notes,
+    })
+  }, [opportunity])
 
   if (!opportunity) {
     return (
