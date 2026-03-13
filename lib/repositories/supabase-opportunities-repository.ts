@@ -242,12 +242,6 @@ export class SupabaseOpportunitiesRepository implements OpportunitiesRepository 
   }
 
   async updateOpportunityStatus(id: string, status: OpportunityStatus): Promise<UpdateStatusResult> {
-    const current = await this.getOpportunityById(id)
-    if (!current) return { opportunity: null }
-
-    const now = new Date().toISOString()
-    const nextAppliedDate = status === 'applied' && !current.appliedDate ? now : current.appliedDate
-
     const rows = await supabaseRestFetch<DbRow[]>(
       this.config,
       `opportunities?${buildQuery({ select: '*', id: `eq.${id}` })}`,
@@ -256,10 +250,7 @@ export class SupabaseOpportunitiesRepository implements OpportunitiesRepository 
         headers: {
           Prefer: 'return=representation',
         },
-        body: JSON.stringify({
-          status,
-          applied_date: nextAppliedDate,
-        }),
+        body: JSON.stringify({ status }),
       }
     )
 
@@ -268,40 +259,48 @@ export class SupabaseOpportunitiesRepository implements OpportunitiesRepository 
       return { opportunity: null }
     }
 
-    const opportunity = toOpportunity(updatedRow, current.followUpDate)
-
-    if (current.status === status) {
-      return { opportunity }
+    let followUpDate: string | undefined
+    try {
+      followUpDate = await this.getFollowUpDate(id)
+    } catch {
+      followUpDate = undefined
     }
 
-    const activityId = safeId()
-    const activityRows = await supabaseRestFetch<DbRow[]>(
-      this.config,
-      `activities?${buildQuery({ select: '*' })}`,
-      {
-        method: 'POST',
-        headers: {
-          Prefer: 'return=representation',
-        },
-        body: JSON.stringify([
-          {
-            id: activityId,
-            opportunity_id: id,
-            type: 'status_changed',
-            description: `Status changed from ${current.status} to ${status}`,
-            created_at: now,
-            metadata: {
-              fromStatus: current.status,
-              toStatus: status,
-            },
-          },
-        ]),
-      }
-    )
+    const opportunity = toOpportunity(updatedRow, followUpDate)
 
-    return {
-      opportunity,
-      activity: toActivity(activityRows[0]),
+    const activityId = safeId()
+    const now = new Date().toISOString()
+
+    try {
+      const activityRows = await supabaseRestFetch<DbRow[]>(
+        this.config,
+        `activities?${buildQuery({ select: '*' })}`,
+        {
+          method: 'POST',
+          headers: {
+            Prefer: 'return=representation',
+          },
+          body: JSON.stringify([
+            {
+              id: activityId,
+              opportunity_id: id,
+              type: 'status_changed',
+              description: `Status changed to ${status}`,
+              created_at: now,
+              metadata: {
+                toStatus: status,
+              },
+            },
+          ]),
+        }
+      )
+
+      return {
+        opportunity,
+        activity: toActivity(activityRows[0]),
+      }
+    } catch {
+      return { opportunity }
     }
   }
 
