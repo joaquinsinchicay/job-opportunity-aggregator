@@ -242,20 +242,6 @@ export class SupabaseOpportunitiesRepository implements OpportunitiesRepository 
   }
 
   async updateOpportunityStatus(id: string, status: OpportunityStatus): Promise<UpdateStatusResult> {
-    const currentRows = await supabaseRestFetch<DbRow[]>(
-      this.config,
-      `opportunities?${buildQuery({ select: 'id,status,applied_date', id: `eq.${id}`, limit: 1 })}`
-    )
-
-    const currentRow = currentRows[0]
-    if (!currentRow) return { opportunity: null }
-
-    const currentStatus = getString(currentRow, 'status') as OpportunityStatus
-    const currentAppliedDate = getOptionalString(currentRow, 'applied_date', 'appliedDate')
-
-    const now = new Date().toISOString()
-    const nextAppliedDate = status === 'applied' && !currentAppliedDate ? now : currentAppliedDate
-
     const rows = await supabaseRestFetch<DbRow[]>(
       this.config,
       `opportunities?${buildQuery({ select: '*', id: `eq.${id}` })}`,
@@ -264,10 +250,7 @@ export class SupabaseOpportunitiesRepository implements OpportunitiesRepository 
         headers: {
           Prefer: 'return=representation',
         },
-        body: JSON.stringify({
-          status,
-          applied_date: nextAppliedDate,
-        }),
+        body: JSON.stringify({ status }),
       }
     )
 
@@ -285,11 +268,8 @@ export class SupabaseOpportunitiesRepository implements OpportunitiesRepository 
 
     const opportunity = toOpportunity(updatedRow, followUpDate)
 
-    if (currentStatus === status) {
-      return { opportunity }
-    }
-
     const activityId = safeId()
+    const now = new Date().toISOString()
 
     try {
       const activityRows = await supabaseRestFetch<DbRow[]>(
@@ -305,10 +285,9 @@ export class SupabaseOpportunitiesRepository implements OpportunitiesRepository 
               id: activityId,
               opportunity_id: id,
               type: 'status_changed',
-              description: `Status changed from ${currentStatus} to ${status}`,
+              description: `Status changed to ${status}`,
               created_at: now,
               metadata: {
-                fromStatus: currentStatus,
                 toStatus: status,
               },
             },
