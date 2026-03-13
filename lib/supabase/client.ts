@@ -1,3 +1,5 @@
+import { getAccessToken } from '@/lib/supabase/session-storage'
+
 export interface SupabaseClientConfig {
   url: string
   anonKey: string

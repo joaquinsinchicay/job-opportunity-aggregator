@@ -2,7 +2,7 @@
 
 import { use, useMemo } from 'react'
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { notFound, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -35,6 +35,7 @@ import {
   CircleDot,
   ArrowRightCircle,
   CheckCircle2,
+  Trash2,
 } from 'lucide-react'
 
 interface OpportunityDetailPageProps {
@@ -53,7 +54,8 @@ export default function OpportunityDetailPage({
   params,
 }: OpportunityDetailPageProps) {
   const { id } = use(params)
-  const { opportunities, activities, updateOpportunityStatus } = useOpportunities()
+  const router = useRouter()
+  const { opportunities, activities, updateOpportunityStatus, deleteOpportunity } = useOpportunities()
 
   const opportunity = useMemo(() => getOpportunityById(opportunities, id), [opportunities, id])
   const opportunityActivities = useMemo(() => getActivitiesByOpportunityId(activities, id), [activities, id])
@@ -65,6 +67,14 @@ export default function OpportunityDetailPage({
   const handleStatusChange = async (newStatus: OpportunityStatus) => {
     if (newStatus === opportunity.status) return
     await updateOpportunityStatus(id, newStatus)
+  }
+
+  const handleDelete = async () => {
+    const shouldDelete = window.confirm('Are you sure you want to delete this opportunity?')
+    if (!shouldDelete) return
+
+    await deleteOpportunity(id)
+    router.push('/opportunities')
   }
 
   return (
@@ -243,6 +253,10 @@ export default function OpportunityDetailPage({
               <Button className="w-full" variant="outline">
                 <Bell className="mr-2 h-4 w-4" />
                 Set Follow-up
+              </Button>
+              <Button className="w-full" variant="destructive" onClick={handleDelete}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Opportunity
               </Button>
             </CardContent>
           </Card>
