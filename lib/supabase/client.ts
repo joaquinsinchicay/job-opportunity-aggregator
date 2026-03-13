@@ -27,6 +27,14 @@ export function isSupabaseConfigured(): boolean {
   return getSupabaseClientConfig() !== null
 }
 
+
+function getAuthToken(): string | null {
+  if (typeof window === 'undefined') return null
+
+  const token = window.localStorage.getItem('supabase.access_token')
+  return token && token.trim() ? token : null
+}
+
 export async function supabaseRestFetch<T>(
   config: SupabaseClientConfig,
   path: string,
@@ -36,7 +44,7 @@ export async function supabaseRestFetch<T>(
     ...init,
     headers: {
       apikey: config.anonKey,
-      Authorization: `Bearer ${getAccessToken() ?? config.anonKey}`,
+      Authorization: `Bearer ${getAuthToken() ?? config.anonKey}`,
       'Content-Type': 'application/json',
       ...(init.headers ?? {}),
     },
