@@ -1,3 +1,5 @@
+import { getAccessToken } from '@/lib/supabase/session-storage'
+
 export interface SupabaseClientConfig {
   url: string
   anonKey: string
@@ -34,7 +36,7 @@ export async function supabaseRestFetch<T>(
     ...init,
     headers: {
       apikey: config.anonKey,
-      Authorization: `Bearer ${config.anonKey}`,
+      Authorization: `Bearer ${getAccessToken() ?? config.anonKey}`,
       'Content-Type': 'application/json',
       ...(init.headers ?? {}),
     },

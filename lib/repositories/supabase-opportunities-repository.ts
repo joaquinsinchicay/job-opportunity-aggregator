@@ -275,33 +275,38 @@ export class SupabaseOpportunitiesRepository implements OpportunitiesRepository 
     }
 
     const activityId = safeId()
-    const activityRows = await supabaseRestFetch<DbRow[]>(
-      this.config,
-      `activities?${buildQuery({ select: '*' })}`,
-      {
-        method: 'POST',
-        headers: {
-          Prefer: 'return=representation',
-        },
-        body: JSON.stringify([
-          {
-            id: activityId,
-            opportunity_id: id,
-            type: 'status_changed',
-            description: `Status changed from ${current.status} to ${status}`,
-            created_at: now,
-            metadata: {
-              fromStatus: current.status,
-              toStatus: status,
-            },
-          },
-        ]),
-      }
-    )
 
-    return {
-      opportunity,
-      activity: toActivity(activityRows[0]),
+    try {
+      const activityRows = await supabaseRestFetch<DbRow[]>(
+        this.config,
+        `activities?${buildQuery({ select: '*' })}`,
+        {
+          method: 'POST',
+          headers: {
+            Prefer: 'return=representation',
+          },
+          body: JSON.stringify([
+            {
+              id: activityId,
+              opportunity_id: id,
+              type: 'status_changed',
+              description: `Status changed from ${current.status} to ${status}`,
+              created_at: now,
+              metadata: {
+                fromStatus: current.status,
+                toStatus: status,
+              },
+            },
+          ]),
+        }
+      )
+
+      return {
+        opportunity,
+        activity: toActivity(activityRows[0]),
+      }
+    } catch {
+      return { opportunity }
     }
   }
 
