@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { signInWithPassword } from '@/lib/supabase/auth'
+import { consumeOAuthSessionFromUrlHash, signInWithGoogleOAuth, signInWithPassword } from '@/lib/supabase/auth'
 import { getAccessToken } from '@/lib/supabase/session-storage'
 
 export default function LoginPage() {
@@ -15,9 +15,19 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    try {
+      if (consumeOAuthSessionFromUrlHash()) {
+        router.replace('/dashboard')
+        return
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Authentication failed')
+    }
+
     if (getAccessToken()) {
       router.replace('/dashboard')
     }
@@ -35,6 +45,18 @@ export default function LoginPage() {
       setError(err instanceof Error ? err.message : 'Authentication failed')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  function onGoogleSignIn() {
+    setError(null)
+    setIsGoogleLoading(true)
+
+    try {
+      signInWithGoogleOAuth('/login')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Authentication failed')
+      setIsGoogleLoading(false)
     }
   }
 
@@ -67,8 +89,17 @@ export default function LoginPage() {
               />
             </div>
             {error ? <p className="text-sm text-red-600">{error}</p> : null}
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full" disabled={isLoading || isGoogleLoading}>
               {isLoading ? 'Signing in...' : 'Sign in'}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={onGoogleSignIn}
+              disabled={isLoading || isGoogleLoading}
+            >
+              {isGoogleLoading ? 'Redirecting to Google...' : 'Continue with Google'}
             </Button>
           </form>
         </CardContent>

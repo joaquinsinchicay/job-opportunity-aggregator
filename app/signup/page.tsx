@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { signUpWithPassword } from '@/lib/supabase/auth'
+import { consumeOAuthSessionFromUrlHash, signInWithGoogleOAuth, signUpWithPassword } from '@/lib/supabase/auth'
 import { getAccessToken } from '@/lib/supabase/session-storage'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -32,10 +32,20 @@ export default function SignUpPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
   useEffect(() => {
+    try {
+      if (consumeOAuthSessionFromUrlHash()) {
+        router.replace('/dashboard')
+        return
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Sign up failed')
+    }
+
     if (getAccessToken()) {
       router.replace('/dashboard')
     }
@@ -84,6 +94,20 @@ export default function SignUpPage() {
     }
   }
 
+  function onGoogleSignUp() {
+    setError(null)
+    setSuccess(null)
+    setIsGoogleLoading(true)
+
+    try {
+      signInWithGoogleOAuth('/signup')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Sign up failed'
+      setError(normalizeSignUpError(message))
+      setIsGoogleLoading(false)
+    }
+  }
+
   return (
     <main className="min-h-screen flex items-center justify-center p-4 bg-background">
       <Card className="w-full max-w-md">
@@ -121,8 +145,17 @@ export default function SignUpPage() {
             </div>
             {error ? <p className="text-sm text-red-600">{error}</p> : null}
             {success ? <p className="text-sm text-green-700">{success}</p> : null}
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full" disabled={isLoading || isGoogleLoading}>
               {isLoading ? 'Creating account...' : 'Create account'}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={onGoogleSignUp}
+              disabled={isLoading || isGoogleLoading}
+            >
+              {isGoogleLoading ? 'Redirecting to Google...' : 'Continue with Google'}
             </Button>
           </form>
         </CardContent>
