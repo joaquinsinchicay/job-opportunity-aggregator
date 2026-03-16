@@ -7,6 +7,18 @@ interface SupabaseTokenResponse {
   expires_in: number
 }
 
+interface SupabaseAuthErrorResponse {
+  msg?: string
+  error_description?: string
+  message?: string
+}
+
+interface SupabaseSignUpResponse {
+  access_token?: string
+  refresh_token?: string
+  expires_in?: number
+}
+
 function getAuthUrl() {
   const config = getSupabaseClientConfig()
   if (!config) {
@@ -45,6 +57,34 @@ export async function signInWithPassword(email: string, password: string): Promi
   const session = mapTokenResponse(payload)
   saveSession(session)
   return session
+}
+
+export async function signUpWithPassword(email: string, password: string): Promise<{ hasSession: boolean }> {
+  const authUrl = getAuthUrl()
+  const config = getSupabaseClientConfig()
+
+  const response = await fetch(`${authUrl}/signup`, {
+    method: 'POST',
+    headers: {
+      apikey: config!.anonKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email, password }),
+  })
+
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as SupabaseAuthErrorResponse | null
+    const message = payload?.msg ?? payload?.error_description ?? payload?.message ?? 'Sign up failed'
+    throw new Error(message)
+  }
+
+  const payload = (await response.json()) as SupabaseSignUpResponse
+  if (payload.access_token && payload.refresh_token && payload.expires_in) {
+    saveSession(mapTokenResponse(payload as SupabaseTokenResponse))
+    return { hasSession: true }
+  }
+
+  return { hasSession: false }
 }
 
 export async function signOut(): Promise<void> {
