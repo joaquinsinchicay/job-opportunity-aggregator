@@ -72,17 +72,10 @@ export default function SignUpPage() {
     setSuccess(null)
 
     try {
-      const result = await signUpWithPassword(email, password)
+      await signUpWithPassword(email, password)
 
-      setSuccess(
-        result.hasSession
-          ? 'Account created successfully. Redirecting to dashboard...'
-          : 'Account created successfully. Check your email to confirm your account before signing in.'
-      )
-
-      if (result.hasSession) {
-        router.replace('/dashboard')
-      }
+      setSuccess('Account created successfully. Redirecting to dashboard...')
+      router.replace('/dashboard')
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Sign up failed'
       setError(normalizeSignUpError(message))
