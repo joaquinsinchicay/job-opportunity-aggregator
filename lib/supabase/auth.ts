@@ -7,6 +7,11 @@ interface SupabaseTokenResponse {
   expires_in: number
 }
 
+interface SupabaseOAuthErrorResponse {
+  error?: string
+  error_description?: string
+}
+
 interface SupabaseAuthErrorResponse {
   msg?: string
   error_description?: string
@@ -115,4 +120,57 @@ export async function signOut(): Promise<void> {
   }
 
   clearSession()
+}
+
+export function signInWithGoogleOAuth(redirectPath: string): void {
+  const config = getSupabaseClientConfig()
+  if (!config) {
+    throw new Error('Supabase configuration is missing')
+  }
+
+  if (typeof window === 'undefined') {
+    throw new Error('OAuth sign in must run in the browser')
+  }
+
+  const redirectTo = new URL(redirectPath, window.location.origin)
+  const authUrl = new URL(`${config.url}/auth/v1/authorize`)
+
+  authUrl.searchParams.set('provider', 'google')
+  authUrl.searchParams.set('redirect_to', redirectTo.toString())
+
+  window.location.assign(authUrl.toString())
+}
+
+export function consumeOAuthSessionFromUrlHash(): boolean {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash
+  if (!hash) {
+    return false
+  }
+
+  const params = new URLSearchParams(hash)
+  const oauthError = (Object.fromEntries(params.entries()) as SupabaseOAuthErrorResponse).error_description
+  if (oauthError) {
+    throw new Error(oauthError)
+  }
+
+  const accessToken = params.get('access_token')
+  const refreshToken = params.get('refresh_token')
+  const expiresIn = Number(params.get('expires_in'))
+
+  if (!accessToken || !refreshToken || !Number.isFinite(expiresIn)) {
+    return false
+  }
+
+  saveSession({
+    accessToken,
+    refreshToken,
+    expiresAt: Date.now() + expiresIn * 1000,
+  })
+
+  window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.search}`)
+  return true
 }
