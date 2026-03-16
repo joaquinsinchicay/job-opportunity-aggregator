@@ -1,40 +1,44 @@
 'use client'
 
-import { FormEvent, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { signInWithPassword } from '@/lib/supabase/auth'
+import { consumeOAuthSessionFromUrlHash, signInWithGoogleOAuth } from '@/lib/supabase/auth'
 import { getAccessToken } from '@/lib/supabase/session-storage'
+
+const GOOGLE_AUTH_ERROR_MESSAGE = 'Google sign in is currently unavailable. Please try again in a moment.'
 
 export default function LoginPage() {
   const router = useRouter()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    try {
+      if (consumeOAuthSessionFromUrlHash()) {
+        router.replace('/dashboard')
+        return
+      }
+    } catch {
+      setError(GOOGLE_AUTH_ERROR_MESSAGE)
+    }
+
     if (getAccessToken()) {
       router.replace('/dashboard')
     }
   }, [router])
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setIsLoading(true)
+  function onGoogleSignIn() {
     setError(null)
+    setIsGoogleLoading(true)
 
     try {
-      await signInWithPassword(email, password)
-      router.replace('/dashboard')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Authentication failed')
-    } finally {
-      setIsLoading(false)
+      signInWithGoogleOAuth('/login')
+    } catch {
+      setError(GOOGLE_AUTH_ERROR_MESSAGE)
+      setIsGoogleLoading(false)
     }
   }
 
@@ -45,32 +49,18 @@ export default function LoginPage() {
           <CardTitle>Login</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-              />
-            </div>
+          <div className="space-y-4">
             {error ? <p className="text-sm text-red-600">{error}</p> : null}
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? 'Signing in...' : 'Sign in'}
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={onGoogleSignIn}
+              disabled={isGoogleLoading}
+            >
+              {isGoogleLoading ? 'Redirecting to Google...' : 'Continue with Google'}
             </Button>
-          </form>
+          </div>
         </CardContent>
         <CardFooter className="justify-center text-sm text-muted-foreground">
           Don&apos;t have an account?&nbsp;

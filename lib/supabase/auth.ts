@@ -7,6 +7,11 @@ interface SupabaseTokenResponse {
   expires_in: number
 }
 
+interface SupabaseOAuthErrorResponse {
+  error?: string
+  error_description?: string
+}
+
 interface SupabaseAuthErrorResponse {
   msg?: string
   error_description?: string
@@ -17,6 +22,9 @@ interface SupabaseSignUpResponse {
   access_token?: string
   refresh_token?: string
   expires_in?: number
+  user?: {
+    identities?: Array<unknown>
+  }
 }
 
 function getAuthUrl() {
@@ -79,12 +87,22 @@ export async function signUpWithPassword(email: string, password: string): Promi
   }
 
   const payload = (await response.json()) as SupabaseSignUpResponse
+
+  if (Array.isArray(payload.user?.identities) && payload.user.identities.length === 0) {
+    throw new Error('This email is already registered. Try signing in instead.')
+  }
+
   if (payload.access_token && payload.refresh_token && payload.expires_in) {
     saveSession(mapTokenResponse(payload as SupabaseTokenResponse))
     return { hasSession: true }
   }
 
-  return { hasSession: false }
+  try {
+    await signInWithPassword(email, password)
+    return { hasSession: true }
+  } catch {
+    throw new Error('Sign up failed. Please try again.')
+  }
 }
 
 export async function signOut(): Promise<void> {
@@ -102,4 +120,57 @@ export async function signOut(): Promise<void> {
   }
 
   clearSession()
+}
+
+export function signInWithGoogleOAuth(redirectPath: string): void {
+  const config = getSupabaseClientConfig()
+  if (!config) {
+    throw new Error('Supabase configuration is missing')
+  }
+
+  if (typeof window === 'undefined') {
+    throw new Error('OAuth sign in must run in the browser')
+  }
+
+  const redirectTo = new URL(redirectPath, window.location.origin)
+  const authUrl = new URL(`${config.url}/auth/v1/authorize`)
+
+  authUrl.searchParams.set('provider', 'google')
+  authUrl.searchParams.set('redirect_to', redirectTo.toString())
+
+  window.location.assign(authUrl.toString())
+}
+
+export function consumeOAuthSessionFromUrlHash(): boolean {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash
+  if (!hash) {
+    return false
+  }
+
+  const params = new URLSearchParams(hash)
+  const oauthError = (Object.fromEntries(params.entries()) as SupabaseOAuthErrorResponse).error_description
+  if (oauthError) {
+    throw new Error(oauthError)
+  }
+
+  const accessToken = params.get('access_token')
+  const refreshToken = params.get('refresh_token')
+  const expiresIn = Number(params.get('expires_in'))
+
+  if (!accessToken || !refreshToken || !Number.isFinite(expiresIn)) {
+    return false
+  }
+
+  saveSession({
+    accessToken,
+    refreshToken,
+    expiresAt: Date.now() + expiresIn * 1000,
+  })
+
+  window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.search}`)
+  return true
 }
