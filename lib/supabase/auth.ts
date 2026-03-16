@@ -17,6 +17,9 @@ interface SupabaseSignUpResponse {
   access_token?: string
   refresh_token?: string
   expires_in?: number
+  user?: {
+    identities?: Array<unknown>
+  }
 }
 
 function getAuthUrl() {
@@ -79,12 +82,22 @@ export async function signUpWithPassword(email: string, password: string): Promi
   }
 
   const payload = (await response.json()) as SupabaseSignUpResponse
+
+  if (Array.isArray(payload.user?.identities) && payload.user.identities.length === 0) {
+    throw new Error('This email is already registered. Try signing in instead.')
+  }
+
   if (payload.access_token && payload.refresh_token && payload.expires_in) {
     saveSession(mapTokenResponse(payload as SupabaseTokenResponse))
     return { hasSession: true }
   }
 
-  return { hasSession: false }
+  try {
+    await signInWithPassword(email, password)
+    return { hasSession: true }
+  } catch {
+    throw new Error('Sign up failed. Please try again.')
+  }
 }
 
 export async function signOut(): Promise<void> {
