@@ -27,6 +27,14 @@ interface SupabaseSignUpResponse {
   }
 }
 
+interface SupabaseRecoverResponse {
+  msg?: string
+}
+
+interface SupabaseRecoveryErrorResponse {
+  error_description?: string
+}
+
 function getAuthUrl() {
   const config = getSupabaseClientConfig()
   if (!config) {
@@ -67,7 +75,11 @@ export async function signInWithPassword(email: string, password: string): Promi
   return session
 }
 
-export async function signUpWithPassword(email: string, password: string): Promise<{ hasSession: boolean }> {
+export async function signUpWithPassword(
+  fullName: string,
+  email: string,
+  password: string,
+): Promise<{ hasSession: boolean }> {
   const authUrl = getAuthUrl()
   const config = getSupabaseClientConfig()
 
@@ -77,7 +89,13 @@ export async function signUpWithPassword(email: string, password: string): Promi
       apikey: config!.anonKey,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({
+      email,
+      password,
+      data: {
+        full_name: fullName,
+      },
+    }),
   })
 
   if (!response.ok) {
@@ -89,7 +107,7 @@ export async function signUpWithPassword(email: string, password: string): Promi
   const payload = (await response.json()) as SupabaseSignUpResponse
 
   if (Array.isArray(payload.user?.identities) && payload.user.identities.length === 0) {
-    throw new Error('This email is already registered. Try signing in instead.')
+    throw new Error('Email already registered')
   }
 
   if (payload.access_token && payload.refresh_token && payload.expires_in) {
@@ -109,17 +127,107 @@ export async function signOut(): Promise<void> {
   const config = getSupabaseClientConfig()
   const accessToken = getAccessToken()
 
-  if (config && accessToken) {
-    await fetch(`${config.url}/auth/v1/logout`, {
-      method: 'POST',
-      headers: {
-        apikey: config.anonKey,
-        Authorization: `Bearer ${accessToken}`,
-      },
-    })
+  try {
+    if (config && accessToken) {
+      await fetch(`${config.url}/auth/v1/logout`, {
+        method: 'POST',
+        headers: {
+          apikey: config.anonKey,
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+    }
+  } finally {
+    clearSession()
+  }
+}
+
+export async function requestPasswordReset(email: string, redirectTo?: string): Promise<{ message: string }> {
+  const authUrl = getAuthUrl()
+  const config = getSupabaseClientConfig()
+
+  const response = await fetch(`${authUrl}/recover`, {
+    method: 'POST',
+    headers: {
+      apikey: config!.anonKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      email,
+      ...(redirectTo ? { redirect_to: redirectTo } : {}),
+    }),
+  })
+
+  if (!response.ok) {
+    const body = await response.text()
+    throw new Error(`Supabase recover error (${response.status}): ${body}`)
   }
 
-  clearSession()
+  const payload = (await response.json().catch(() => null)) as SupabaseRecoverResponse | null
+  return {
+    message: payload?.msg ?? 'Recovery email requested',
+  }
+}
+
+export function consumePasswordRecoverySessionFromUrl(): boolean {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash
+  const hashParams = new URLSearchParams(hash)
+  const searchParams = new URLSearchParams(window.location.search)
+
+  const recoveryError =
+    ((Object.fromEntries(hashParams.entries()) as SupabaseRecoveryErrorResponse).error_description ??
+      (Object.fromEntries(searchParams.entries()) as SupabaseRecoveryErrorResponse).error_description)
+
+  if (recoveryError) {
+    throw new Error(recoveryError)
+  }
+
+  const accessToken = hashParams.get('access_token')
+  const refreshToken = hashParams.get('refresh_token')
+  const expiresIn = Number(hashParams.get('expires_in'))
+  const recoveryType = hashParams.get('type')
+
+  if (!accessToken || !refreshToken || !Number.isFinite(expiresIn) || recoveryType !== 'recovery') {
+    return false
+  }
+
+  saveSession({
+    accessToken,
+    refreshToken,
+    expiresAt: Date.now() + expiresIn * 1000,
+  })
+
+  window.history.replaceState({}, document.title, window.location.pathname)
+  return true
+}
+
+export async function updatePassword(password: string): Promise<void> {
+  const authUrl = getAuthUrl()
+  const config = getSupabaseClientConfig()
+  const accessToken = getAccessToken()
+
+  if (!config || !accessToken) {
+    throw new Error('Recovery session is invalid')
+  }
+
+  const response = await fetch(`${authUrl}/user`, {
+    method: 'PUT',
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ password }),
+  })
+
+  if (!response.ok) {
+    const body = await response.text()
+    throw new Error(`Supabase update user error (${response.status}): ${body}`)
+  }
 }
 
 export function signInWithGoogleOAuth(redirectPath: string): void {
