@@ -45,7 +45,8 @@ export default function ForgotPasswordPage() {
     setIsSubmitting(true)
 
     try {
-      await requestPasswordReset(email.trim())
+      const redirectTo = `${window.location.origin}/reset-password`
+      await requestPasswordReset(email.trim(), redirectTo)
       setFeedback(SUCCESS_MESSAGE)
     } catch {
       setFeedback(SERVICE_ERROR_MESSAGE)

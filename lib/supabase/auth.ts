@@ -31,6 +31,10 @@ interface SupabaseRecoverResponse {
   msg?: string
 }
 
+interface SupabaseRecoveryErrorResponse {
+  error_description?: string
+}
+
 function getAuthUrl() {
   const config = getSupabaseClientConfig()
   if (!config) {
@@ -136,7 +140,7 @@ export async function signOut(): Promise<void> {
   clearSession()
 }
 
-export async function requestPasswordReset(email: string): Promise<{ message: string }> {
+export async function requestPasswordReset(email: string, redirectTo?: string): Promise<{ message: string }> {
   const authUrl = getAuthUrl()
   const config = getSupabaseClientConfig()
 
@@ -146,7 +150,10 @@ export async function requestPasswordReset(email: string): Promise<{ message: st
       apikey: config!.anonKey,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({
+      email,
+      ...(redirectTo ? { redirect_to: redirectTo } : {}),
+    }),
   })
 
   if (!response.ok) {
@@ -157,6 +164,67 @@ export async function requestPasswordReset(email: string): Promise<{ message: st
   const payload = (await response.json().catch(() => null)) as SupabaseRecoverResponse | null
   return {
     message: payload?.msg ?? 'Recovery email requested',
+  }
+}
+
+export function consumePasswordRecoverySessionFromUrl(): boolean {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash
+  const hashParams = new URLSearchParams(hash)
+  const searchParams = new URLSearchParams(window.location.search)
+
+  const recoveryError =
+    ((Object.fromEntries(hashParams.entries()) as SupabaseRecoveryErrorResponse).error_description ??
+      (Object.fromEntries(searchParams.entries()) as SupabaseRecoveryErrorResponse).error_description)
+
+  if (recoveryError) {
+    throw new Error(recoveryError)
+  }
+
+  const accessToken = hashParams.get('access_token')
+  const refreshToken = hashParams.get('refresh_token')
+  const expiresIn = Number(hashParams.get('expires_in'))
+  const recoveryType = hashParams.get('type')
+
+  if (!accessToken || !refreshToken || !Number.isFinite(expiresIn) || recoveryType !== 'recovery') {
+    return false
+  }
+
+  saveSession({
+    accessToken,
+    refreshToken,
+    expiresAt: Date.now() + expiresIn * 1000,
+  })
+
+  window.history.replaceState({}, document.title, window.location.pathname)
+  return true
+}
+
+export async function updatePassword(password: string): Promise<void> {
+  const authUrl = getAuthUrl()
+  const config = getSupabaseClientConfig()
+  const accessToken = getAccessToken()
+
+  if (!config || !accessToken) {
+    throw new Error('Recovery session is invalid')
+  }
+
+  const response = await fetch(`${authUrl}/user`, {
+    method: 'PUT',
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ password }),
+  })
+
+  if (!response.ok) {
+    const body = await response.text()
+    throw new Error(`Supabase update user error (${response.status}): ${body}`)
   }
 }
 
