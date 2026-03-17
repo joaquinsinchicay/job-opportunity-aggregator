@@ -51,3 +51,10 @@
 - **Qué pasa:** upsert usa `on_conflict=opportunity_id`; si no existe índice/constraint único, puede fallar.
 - **Impacto:** seguimiento no persistido al editar follow-up.
 - **Archivo:** `lib/repositories/supabase-opportunities-repository.ts`.
+
+### 8) Entornos con política de red restringida pueden bloquear instalación de Playwright
+- **Tipo:** operativo / entorno.
+- **Qué pasa:** en entornos con `403` al registry npm no se puede instalar `@playwright/test`.
+- **Impacto:** imposibilidad de ejecutar `npm run test:smoke` hasta resolver acceso al registry/mirror interno.
+- **Archivos involucrados:** `package.json`, `playwright.config.ts`, `tests/smoke/*`.
+- **Recomendación concreta:** habilitar mirror npm corporativo o whitelist para `@playwright/test` en pipeline/local.

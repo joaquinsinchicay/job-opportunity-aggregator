@@ -15,3 +15,6 @@
 1. **Sesión y autorización delegadas al cliente**, sin validación server-side previa.
 2. **Refresh token almacenado pero sin uso efectivo**.
 3. **Dependencia total de RLS correcta en Supabase** para aislamiento multiusuario.
+
+## Deuda de testing automatizado
+1. **Dependencia externa para tooling E2E (`@playwright/test`)**: requiere política de red compatible para instalar y ejecutar smoke tests en todos los entornos.
