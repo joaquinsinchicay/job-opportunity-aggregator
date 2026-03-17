@@ -7,7 +7,7 @@
 
 ## Deuda de calidad
 1. **Configuración permisiva de build/TS** (`allowJs: true`, `ignoreBuildErrors: true`).
-2. **Manejo de errores inconsistente** en operaciones CRUD.
+2. **Manejo de errores CRUD parcialmente unificado**: se normalizó el flujo de escritura en el provider con toast + logging, pero la carga inicial aún no usa el mismo surface de feedback.
 3. **Validaciones duplicadas** entre formularios new/edit.
 4. **Falta de observabilidad** (sin logging estructurado ni telemetría de fallos funcionales).
 

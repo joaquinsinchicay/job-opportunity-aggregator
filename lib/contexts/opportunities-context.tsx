@@ -9,6 +9,7 @@ import type {
   UpdateOpportunityInput,
 } from '../types'
 import { getOpportunitiesRepository } from '@/lib/repositories'
+import { toast } from '@/hooks/use-toast'
 
 interface OpportunitiesContextValue {
   opportunities: Opportunity[]
@@ -37,6 +38,29 @@ export function OpportunitiesProvider({ children, initialData }: OpportunitiesPr
   const [isLoading, setIsLoading] = useState(!initialData)
   const [error, setError] = useState<Error | null>(null)
 
+  const extractErrorMessage = useCallback((err: unknown, fallback: string) => {
+    if (err instanceof Error && err.message.trim()) {
+      return err.message
+    }
+
+    return fallback
+  }, [])
+
+  const handleCrudError = useCallback(
+    (operation: string, err: unknown, fallbackMessage: string) => {
+      const message = extractErrorMessage(err, fallbackMessage)
+      const nextError = new Error(message)
+      console.error(`[opportunities] ${operation} failed`, err)
+      setError(nextError)
+      toast({
+        variant: 'destructive',
+        title: 'Action failed',
+        description: message,
+      })
+    },
+    [extractErrorMessage]
+  )
+
   const refreshOpportunities = useCallback(async () => {
     setIsLoading(true)
     setError(null)
@@ -64,38 +88,54 @@ export function OpportunitiesProvider({ children, initialData }: OpportunitiesPr
   const updateOpportunityStatus = useCallback(
     async (id: string, status: OpportunityStatus) => {
       setError(null)
-      const result = await repository.updateOpportunityStatus(id, status)
-      if (!result.opportunity) return
+      try {
+        const result = await repository.updateOpportunityStatus(id, status)
+        const nextOpportunity = result.opportunity
+        if (!nextOpportunity) {
+          handleCrudError('updateOpportunityStatus', null, 'Could not update opportunity status.')
+          return
+        }
 
-      setOpportunities((prev) => prev.map((opp) => (opp.id === id ? result.opportunity! : opp)))
-      if (!result.activity) return
+        setOpportunities((prev) => prev.map((opp) => (opp.id === id ? nextOpportunity : opp)))
 
-      setActivities((prev) => [result.activity!, ...prev])
+        const nextActivity = result.activity
+        if (!nextActivity) return
+
+        setActivities((prev) => [nextActivity, ...prev])
+      } catch (err) {
+        handleCrudError('updateOpportunityStatus', err, 'Could not update opportunity status.')
+      }
     },
-    [repository]
+    [handleCrudError, repository]
   )
 
   const addOpportunity = useCallback(
     async (input: CreateOpportunityInput) => {
       setError(null)
-      const result = await repository.createOpportunity(input)
-      setOpportunities((prev) => [result.opportunity, ...prev])
-      setActivities((prev) => [result.activity, ...prev])
+      try {
+        const result = await repository.createOpportunity(input)
+        setOpportunities((prev) => [result.opportunity, ...prev])
+        setActivities((prev) => [result.activity, ...prev])
+      } catch (err) {
+        handleCrudError('addOpportunity', err, 'Could not create opportunity.')
+      }
     },
-    [repository]
+    [handleCrudError, repository]
   )
-
 
   const updateOpportunity = useCallback(
     async (id: string, input: UpdateOpportunityInput): Promise<Opportunity | null> => {
       setError(null)
-      const updated = await repository.updateOpportunity(id, input)
-      if (!updated) return null
+      try {
+        const updated = await repository.updateOpportunity(id, input)
+        if (!updated) {
+          handleCrudError('updateOpportunity', null, 'Could not update opportunity.')
+          return null
+        }
 
-      setOpportunities((prev) => prev.map((opp) => (opp.id === id ? updated : opp)))
+        setOpportunities((prev) => prev.map((opp) => (opp.id === id ? updated : opp)))
 
-      if (input.followUpDate !== undefined) {
-        if (input.followUpDate) {
+        if (input.followUpDate !== undefined && input.followUpDate) {
           setActivities((prev) => [
             {
               id: `activity_${Date.now()}`,
@@ -107,21 +147,33 @@ export function OpportunitiesProvider({ children, initialData }: OpportunitiesPr
             ...prev,
           ])
         }
-      }
 
-      return updated
+        return updated
+      } catch (err) {
+        handleCrudError('updateOpportunity', err, 'Could not update opportunity.')
+        return null
+      }
     },
-    [repository]
+    [handleCrudError, repository]
   )
 
   const deleteOpportunity = useCallback(
     async (id: string) => {
       setError(null)
-      await repository.deleteOpportunity(id)
-      setOpportunities((prev) => prev.filter((opp) => opp.id !== id))
-      setActivities((prev) => prev.filter((activity) => activity.opportunityId !== id))
+      try {
+        const deleted = await repository.deleteOpportunity(id)
+        if (!deleted) {
+          handleCrudError('deleteOpportunity', null, 'Could not delete opportunity.')
+          return
+        }
+
+        setOpportunities((prev) => prev.filter((opp) => opp.id !== id))
+        setActivities((prev) => prev.filter((activity) => activity.opportunityId !== id))
+      } catch (err) {
+        handleCrudError('deleteOpportunity', err, 'Could not delete opportunity.')
+      }
     },
-    [repository]
+    [handleCrudError, repository]
   )
 
   const value: OpportunitiesContextValue = {

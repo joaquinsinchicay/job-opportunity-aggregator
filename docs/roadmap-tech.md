@@ -23,7 +23,7 @@
 - **Impacto:** mejora robustez UX en formularios críticos.
 - **Causa raíz:** falta de `try/finally` + surface de error consistente.
 - **Archivos:** `app/(dashboard)/opportunities/new/page.tsx`, `app/(dashboard)/opportunities/[id]/edit/page.tsx`, `lib/contexts/opportunities-context.tsx`.
-- **Recomendación:** patrón estándar para async UI con finally + mensajes de error.
+- **Recomendación:** patrón estándar para async UI con finally + mensajes de error. **Estado:** parcialmente implementado en `OpportunitiesProvider` (CRUD de escritura), pendiente decidir UX homogénea para errores de carga inicial.
 
 ### 4) Cerrar brecha de fecha aplicada entre repositorios
 - **Severidad:** P1
