@@ -36,9 +36,17 @@
   - `lib/repositories/opportunities-repository.ts`
   - `lib/repositories/supabase-opportunities-repository.ts`
 
+### 6) Manejo de errores UI inconsistente en CRUD
+- **Tipo:** mitigado.
+- **Estado actual:** las operaciones de escritura del `OpportunitiesProvider` (`create`, `update`, `delete`, `update status`) ahora aplican un patrón común: `console.error` técnico + `setError` + toast destructivo con fallback de mensaje.
+- **Impacto residual:** `refreshOpportunities` mantiene manejo básico sin toast y puede requerir una decisión de UX aparte para cargas iniciales.
+- **Archivos verificados:**
+  - `lib/contexts/opportunities-context.tsx`
+  - `app/(dashboard)/layout.tsx`
+
 ## Hipótesis que requieren validación
 
-### 6) Inserción en `followups` podría depender de constraint único no documentado
+### 7) Inserción en `followups` podría depender de constraint único no documentado
 - **Tipo:** hipótesis.
 - **Qué pasa:** upsert usa `on_conflict=opportunity_id`; si no existe índice/constraint único, puede fallar.
 - **Impacto:** seguimiento no persistido al editar follow-up.

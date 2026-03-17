@@ -33,7 +33,7 @@
 
 ## Manejo de errores UI
 - Login/signup muestran error para OAuth.
-- En CRUD de oportunidades no hay superficie consistente de error visible para el usuario.
+- En CRUD de escritura de oportunidades (create/update/delete/update status) se unificó feedback con toast destructivo + logging técnico desde `OpportunitiesProvider`.
 - Operaciones async en páginas pueden fallar dejando UI en estado incoherente (ej. submit bloqueado).
 
 ## Side effects riesgosos
