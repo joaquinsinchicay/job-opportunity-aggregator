@@ -8,7 +8,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { consumeOAuthSessionFromUrlHash, signInWithGoogleOAuth } from '@/lib/supabase/auth'
 import { getAccessToken } from '@/lib/supabase/session-storage'
 
-const GOOGLE_AUTH_ERROR_MESSAGE = 'Google sign in is currently unavailable. Please try again in a moment.'
+const GOOGLE_AUTH_ERROR_MESSAGE = 'Something went wrong. Please try again'
 
 export default function LoginPage() {
   const router = useRouter()
