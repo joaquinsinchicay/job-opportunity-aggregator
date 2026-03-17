@@ -27,6 +27,10 @@ interface SupabaseSignUpResponse {
   }
 }
 
+interface SupabaseRecoverResponse {
+  msg?: string
+}
+
 function getAuthUrl() {
   const config = getSupabaseClientConfig()
   if (!config) {
@@ -130,6 +134,30 @@ export async function signOut(): Promise<void> {
   }
 
   clearSession()
+}
+
+export async function requestPasswordReset(email: string): Promise<{ message: string }> {
+  const authUrl = getAuthUrl()
+  const config = getSupabaseClientConfig()
+
+  const response = await fetch(`${authUrl}/recover`, {
+    method: 'POST',
+    headers: {
+      apikey: config!.anonKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email }),
+  })
+
+  if (!response.ok) {
+    const body = await response.text()
+    throw new Error(`Supabase recover error (${response.status}): ${body}`)
+  }
+
+  const payload = (await response.json().catch(() => null)) as SupabaseRecoverResponse | null
+  return {
+    message: payload?.msg ?? 'Recovery email requested',
+  }
 }
 
 export function signInWithGoogleOAuth(redirectPath: string): void {
