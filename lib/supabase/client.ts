@@ -1,4 +1,4 @@
-import { getAccessToken } from '@/lib/supabase/session-storage'
+import { clearSession, getSession, saveSession } from '@/lib/supabase/session-storage'
 
 export interface SupabaseClientConfig {
   url: string
@@ -28,11 +28,45 @@ export function isSupabaseConfigured(): boolean {
 }
 
 
-function getAuthToken(): string | null {
-  if (typeof window === 'undefined') return null
+interface SupabaseRefreshTokenResponse {
+  access_token: string
+  refresh_token: string
+  expires_in: number
+}
 
-  const token = window.localStorage.getItem('supabase.access_token')
-  return token && token.trim() ? token : null
+async function getAuthToken(config: SupabaseClientConfig): Promise<string | null> {
+  const session = getSession()
+  if (!session) {
+    return null
+  }
+
+  if (Date.now() < session.expiresAt) {
+    return session.accessToken
+  }
+
+  const response = await fetch(`${config.url}/auth/v1/token?grant_type=refresh_token`, {
+    method: 'POST',
+    headers: {
+      apikey: config.anonKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ refresh_token: session.refreshToken }),
+  })
+
+  if (!response.ok) {
+    clearSession()
+    return null
+  }
+
+  const payload = (await response.json()) as SupabaseRefreshTokenResponse
+  const refreshedSession = {
+    accessToken: payload.access_token,
+    refreshToken: payload.refresh_token,
+    expiresAt: Date.now() + payload.expires_in * 1000,
+  }
+
+  saveSession(refreshedSession)
+  return refreshedSession.accessToken
 }
 
 export async function supabaseRestFetch<T>(
@@ -40,11 +74,13 @@ export async function supabaseRestFetch<T>(
   path: string,
   init: RequestInit = {}
 ): Promise<T> {
+  const authToken = await getAuthToken(config)
+
   const response = await fetch(`${config.url}/rest/v1/${path}`, {
     ...init,
     headers: {
       apikey: config.anonKey,
-      Authorization: `Bearer ${getAuthToken() ?? config.anonKey}`,
+      Authorization: `Bearer ${authToken ?? config.anonKey}`,
       'Content-Type': 'application/json',
       ...(init.headers ?? {}),
     },
