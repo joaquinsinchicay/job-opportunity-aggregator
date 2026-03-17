@@ -2,14 +2,12 @@
 
 ## Bugs confirmados
 
-### 1) `isSubmitting` puede quedar bloqueado en formularios new/edit
-- **Tipo:** confirmado por evidencia.
-- **Qué pasa:** si `addOpportunity` o `updateOpportunity` lanza error, `setIsSubmitting(false)` no se ejecuta.
-- **Impacto:** botón queda en “Saving...” y UX bloqueada hasta recargar.
-- **Archivos:**
+### 1) `isSubmitting` bloqueado en formularios new/edit
+- **Tipo:** resuelto.
+- **Estado actual:** tanto `new` como `edit` usan `try/finally` y garantizan `setIsSubmitting(false)` aunque falle la operación async.
+- **Archivos verificados:**
   - `app/(dashboard)/opportunities/new/page.tsx`
   - `app/(dashboard)/opportunities/[id]/edit/page.tsx`
-- **Reproducción:** provocar fallo de red/Supabase durante submit.
 
 ### 2) `supabaseRestFetch` usa token potencialmente expirado
 - **Tipo:** confirmado por evidencia.
