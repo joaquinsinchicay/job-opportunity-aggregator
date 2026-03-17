@@ -127,17 +127,19 @@ export async function signOut(): Promise<void> {
   const config = getSupabaseClientConfig()
   const accessToken = getAccessToken()
 
-  if (config && accessToken) {
-    await fetch(`${config.url}/auth/v1/logout`, {
-      method: 'POST',
-      headers: {
-        apikey: config.anonKey,
-        Authorization: `Bearer ${accessToken}`,
-      },
-    })
+  try {
+    if (config && accessToken) {
+      await fetch(`${config.url}/auth/v1/logout`, {
+        method: 'POST',
+        headers: {
+          apikey: config.anonKey,
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+    }
+  } finally {
+    clearSession()
   }
-
-  clearSession()
 }
 
 export async function requestPasswordReset(email: string, redirectTo?: string): Promise<{ message: string }> {
