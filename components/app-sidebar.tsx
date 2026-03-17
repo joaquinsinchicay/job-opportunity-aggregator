@@ -21,9 +21,12 @@ export function AppSidebar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const handleLogout = async () => {
-    await signOut()
-    setMobileMenuOpen(false)
-    router.replace('/login')
+    try {
+      await signOut()
+    } finally {
+      setMobileMenuOpen(false)
+      router.replace('/login')
+    }
   }
 
   return (
