@@ -30,10 +30,9 @@
 - **Archivo:** `components/auth/auth-gate.tsx`.
 
 ### 5) Divergencia de fecha aplicada entre repositorio memoria y Supabase
-- **Tipo:** altamente probable.
-- **Qué pasa:** en memoria, pasar a `applied` setea `appliedDate`; en Supabase solo actualiza `status`.
-- **Impacto:** inconsistencia UI/DB dependiendo del backend activo.
-- **Archivos:**
+- **Tipo:** resuelto.
+- **Estado actual:** ambos repositorios conservan la misma regla de dominio para `updateOpportunityStatus`: al pasar a `applied` se setea `appliedDate` solo si aún no existe, no se limpia al salir de `applied`, y no se crea actividad si el estado no cambia.
+- **Archivos verificados:**
   - `lib/repositories/opportunities-repository.ts`
   - `lib/repositories/supabase-opportunities-repository.ts`
 
