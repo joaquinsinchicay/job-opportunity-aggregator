@@ -67,7 +67,11 @@ export async function signInWithPassword(email: string, password: string): Promi
   return session
 }
 
-export async function signUpWithPassword(email: string, password: string): Promise<{ hasSession: boolean }> {
+export async function signUpWithPassword(
+  fullName: string,
+  email: string,
+  password: string,
+): Promise<{ hasSession: boolean }> {
   const authUrl = getAuthUrl()
   const config = getSupabaseClientConfig()
 
@@ -77,7 +81,13 @@ export async function signUpWithPassword(email: string, password: string): Promi
       apikey: config!.anonKey,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({
+      email,
+      password,
+      data: {
+        full_name: fullName,
+      },
+    }),
   })
 
   if (!response.ok) {
@@ -89,7 +99,7 @@ export async function signUpWithPassword(email: string, password: string): Promi
   const payload = (await response.json()) as SupabaseSignUpResponse
 
   if (Array.isArray(payload.user?.identities) && payload.user.identities.length === 0) {
-    throw new Error('This email is already registered. Try signing in instead.')
+    throw new Error('Email already registered')
   }
 
   if (payload.access_token && payload.refresh_token && payload.expires_in) {
