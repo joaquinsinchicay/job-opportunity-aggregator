@@ -88,17 +88,20 @@ export default function NewOpportunityPage() {
 
     setIsSubmitting(true)
 
-    await addOpportunity({
-      title: formData.title,
-      company: formData.company,
-      location: formData.location,
-      workMode: formData.workMode,
-      sourceUrl: formData.sourceUrl,
-      notes: formData.notes,
-    })
+    try {
+      await addOpportunity({
+        title: formData.title,
+        company: formData.company,
+        location: formData.location,
+        workMode: formData.workMode,
+        sourceUrl: formData.sourceUrl,
+        notes: formData.notes,
+      })
 
-    setIsSubmitting(false)
-    router.push('/opportunities')
+      router.push('/opportunities')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const updateField = <K extends keyof typeof formData>(field: K, value: typeof formData[K]) => {

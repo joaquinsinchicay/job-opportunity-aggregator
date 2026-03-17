@@ -103,16 +103,19 @@ export default function EditOpportunityPage({ params }: EditOpportunityPageProps
     if (!formData.workMode) return
 
     setIsSubmitting(true)
-    await updateOpportunity(id, {
-      title: formData.title,
-      company: formData.company,
-      location: formData.location,
-      workMode: formData.workMode,
-      sourceUrl: formData.sourceUrl,
-      notes: formData.notes,
-    })
-    setIsSubmitting(false)
-    router.push(`/opportunities/${id}`)
+    try {
+      await updateOpportunity(id, {
+        title: formData.title,
+        company: formData.company,
+        location: formData.location,
+        workMode: formData.workMode,
+        sourceUrl: formData.sourceUrl,
+        notes: formData.notes,
+      })
+      router.push(`/opportunities/${id}`)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const updateField = <K extends keyof typeof formData>(field: K, value: (typeof formData)[K]) => {
