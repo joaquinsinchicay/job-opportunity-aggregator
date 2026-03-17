@@ -33,4 +33,4 @@ Campos relevantes:
 ## Inconsistencias detectadas
 1. Frontend maneja `followUpDate` dentro de `Opportunity`, pero en DB vive en tabla separada `followups`.
 2. Repositorio soporta aliases de columnas (`scheduled_for`, `due_at`), señal de variabilidad histórica del esquema.
-3. En cambio de estado a `applied`, repositorio Supabase no asegura `applied_date` automático (sí ocurre en memoria).
+3. Regla vigente y consistente en ambos repositorios: al cambiar a `applied`, se setea `applied_date` únicamente si estaba vacío; en cambios posteriores de estado se conserva el valor.
